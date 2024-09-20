@@ -1,8 +1,8 @@
-# LineRider for Python3
-Updated by: ***Massimo Burlando***
-
 # Dependencies
 pip install pillow
+
+# LineRider for Python3
+Updated by: ***Massimo Burlando***
 
 **Disclaimer:** I don't take credit for this game. The original developer is David Lu (https://github.com/conundrumer), who wrote this code for a class. I just updated the code so that it works in Python3.
 
