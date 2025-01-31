@@ -50,6 +50,28 @@ class Grid:
         cells = [(x, y) for x in cols for y in rows]
         return cells
 
+    def remove_from_grid(self, line):
+        """removes the line in the cells the line exists in"""
+        removedCells = self.get_grid_cells(line)  # list of cell positions
+        if line.type == "scene":
+            grid = self.scenery
+        else:
+            grid = self.solids
+        for gPos in removedCells:
+            cell = grid[gPos]
+            # SET OF LINES, REMEMBER?
+            cell.remove(line)
+            if len(cell) == 0:  # get rid of the cell entirely if no lines
+                grid.pop(gPos)
+
+    def grid_neighbors(self, pos):
+        """returns a list of the positions of the cells at and around the pos"""
+        cells = {}
+        x, y = self.grid_pos(pos)
+        g = self.app.data.gridSize
+        return [(x, y), (x + g, y), (x + g, y + g), (x, y + g), (x - g, y + g),
+                (x - g, y), (x - g, y - g), (x, y - g), (x + g, y - g)]
+
     def grid_pos(self, pnt):
         return self.grid_floor(pnt.x), self.grid_floor(pnt.y)
 

@@ -2,6 +2,7 @@
 import os
 import copy
 import tkinter as tk
+from tkinter import messagebox
 import time
 
 from geometry import Point, Vector, Line, distance
@@ -739,7 +740,7 @@ class UI:
                            font=("Arial", "15"), text=str(i + 1) + "/8")
 
     def do_about(self):
-        tk.messagebox.showinfo("About", """Line Rider Python v1.4
+        messagebox.showinfo("About", """Line Rider Python v1.4
     Created by David Lu (Conundrumer)
     Something about fair use for education purposes here...
     Line Rider originally created by Bostjan Cadez (fsk)

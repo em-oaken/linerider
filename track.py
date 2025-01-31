@@ -37,7 +37,7 @@ class Track:
         for gPos in cells:  # each cell has a position/key on the grid/dict
             cell = self.app.grid.solids.get(gPos, set())  # each cell is a set of lines
             for line in cell:
-                if distance_from_line(pos, line) * z <= radius:
+                if distance_from_line(pos, line, self.app.data) * z <= radius:
                     removedLines |= {line}
             cell = self.app.grid.scenery.get(gPos, set())
             for line in cell:

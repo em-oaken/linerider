@@ -4,6 +4,7 @@ import time
 import os
 import pickle
 import tkinter as tk
+from tkinter import messagebox
 import copy
 
 from ui import UI
@@ -70,7 +71,7 @@ class App:
 
     def new_track(self):
         if self.data.modified:
-            if tk.messagebox.askokcancel(
+            if messagebox.askokcancel(
                     "Unsaved changes!", "Unsaved changes!\nContinue?"):
                 self.init()
                 self.reset_rider()
@@ -140,6 +141,46 @@ class App:
 
         def exit():
             window.destroy()
+
+        def save_attempt():
+            name = saveWindow.get()
+            self.track.name = name
+            path = "savedLines/" + name
+
+            def save():
+                saveWindow.delete(0, tk.END)
+                try:
+                    with open(path, "wb") as track:
+                        pickle.dump(self.track, track)  # ACTUAL SAVING
+                    saveWindow.insert(0, "Saved!")
+                    self.track_modified(False)
+                    window.after(1000, exit)
+                except Exception as error:
+                    saveWindow.insert(0, "Failed to save! D:")
+                    print(error)
+                    window.after(1000, lambda: undo(False))
+
+            def undo(YN=True):
+                saveWindow.delete(0, tk.END)
+                saveWindow.insert(0, name)
+                loadButton.config(text="Save", command=save_attempt)
+                if YN:
+                    cancelButton.destroy()
+
+            if not os.path.isdir("savedLines"):
+                os.mkdir("savedLines")
+            if os.path.isfile(path):
+                saveWindow.delete(0, tk.END)
+                saveWindow.insert(0, "Overwrite track?")
+                loadButton.config(text="Yes", command=save)
+                cancelButton = tk.Button(window, text="No", command=undo)
+                cancelButton.pack()
+            else:
+                save()
+
+        loadButton = tk.Button(window, text="Save", command=save_attempt)
+        saveWindow.pack()
+        loadButton.pack()
 
     def on_exit_save(self):
         if not os.path.isdir("savedLines"):

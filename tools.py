@@ -60,7 +60,7 @@ def make_line(event, app):
 
 def eraser(event, app):
     pos = Vector(event.x, event.y)
-    if app.data.pause == True and event.type != "5" and in_window(pos):
+    if app.data.pause == True and event.type != "5" and in_window(pos, app.data):
         pos = app.inverse_pz(pos)
         removedLines = app.track.remove_lines_list(pos)
         if len(removedLines) > 0:
