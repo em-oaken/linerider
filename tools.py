@@ -24,7 +24,7 @@ def pencil(self, event, app):
             app.data.tempPoint = None
 
 
-def pan(event, app):
+def pan(self, event, app):
     if app.data.pause or not app.data.follow:
         z = app.track.zoom
         pos = (event.x, event.y)
@@ -39,7 +39,7 @@ def pan(event, app):
 
 def make_line(event, app):
     pos = Vector(event.x, event.y)
-    if app.data.pause == True and in_window(pos):
+    if app.data.pause == True and in_window(pos, app.data):
         pos = app.inverse_pz(pos)
         if app.tools.snap == True:
             pos = app.ui.closest_point_to_line_point(pos)

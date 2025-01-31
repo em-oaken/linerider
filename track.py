@@ -41,6 +41,6 @@ class Track:
                     removedLines |= {line}
             cell = self.app.grid.scenery.get(gPos, set())
             for line in cell:
-                if distance_from_line(pos, line) * z <= radius:
+                if distance_from_line(pos, line, self.app.data) * z <= radius:
                     removedLines |= {line}
         return removedLines

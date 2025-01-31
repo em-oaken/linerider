@@ -191,7 +191,7 @@ class App:
             with open(path, "wb") as track:
                 pickle.dump(self.track, track)
         except Exception as error:
-            print(error)
+            print('Error saving: ', error)
             if not self.data.modified or tk.messagebox.askokcancel(
                     "Unsaved changes!", "Failed to save! D:\nExit anyways?"):
                 self.ui.root.destroy()
