@@ -12,7 +12,7 @@ from data import Data
 from track import Track
 from rider import Rider
 from grid import Grid
-from tools import Tools
+from tools import ToolManager
 from geometry import Vector
 from physics import resolve_collision
 
@@ -22,26 +22,21 @@ class App:
         self.track = Track(app=self)
         self.rider = Rider()
         self.grid = Grid(app=self)
-        self.tools = Tools()
+        self.tm = ToolManager(self)
         self.init()
         self.ui = UI(app=self)
         self.timer_fired()
-        self.ui.start_tkmainloop()
+        self.ui.start_mainloop()
 
 
     def init(self):
-        self.tools.ctrlPressed = False
+        self.ctrlPressed = False
         self.data.help = False
         self.data.helpIndex = 0
-        self.track.lines = []
-        self.track.zoom = 1
-        self.track.panPos = Vector(0, 0) - self.data.center
-        self.track.name = "Untitled"
         self.grid.solids = dict()
         self.grid.scenery = dict()
         self.data.undoStack = []
         self.data.redoStack = []
-        self.track.startPoint = Vector(0, 0)
         self.data.tempPoint = Vector(0, 0)
         self.data.tempLine = None
         self.data.pause = True
@@ -318,12 +313,10 @@ class App:
             self.rider = copy.deepcopy(self.data.flagBosh)
 
     def lmouse_pressed(self, event):
-        tool = self.tools.leftTool
-        tool(event, self)
+        self.tm.use('left', event)
 
     def rmouse_pressed(self, event):
-        tool = self.tools.rightTool
-        tool(event, self)
+        self.tm.use('right', event)
 
     def mmouse_pressed(self, event):
         self.zoom(event)
@@ -344,17 +337,16 @@ class App:
 
     def zoom(self, event):
         if event.type == "4":  # pressed
-            self.tools.tempZoom = event.y
+            self.temp_zoom = event.y
         #        cor = inverse_pz(vector(event.x, event.y))
         #        print(cor.x, cor.y)
         elif event.type == "6":  # moved
-            delta = event.y - self.tools.tempZoom
-            zoom = 0.99 ** (delta)
+            delta = event.y - self.temp_zoom
+            zoom = 0.99 ** delta
             zoom *= self.track.zoom
-            if ((0.1 < zoom and delta > 0) or
-                    (10 > zoom and delta < 0)):
+            if (0.1 < zoom and delta > 0) or (10 > zoom and delta < 0):
                 self.track.zoom = zoom
-            self.tools.tempZoom = event.y
+            self.temp_zoom = event.y
 
     def zoom_m(self, event):
         if (event.delta % 120) == 0:

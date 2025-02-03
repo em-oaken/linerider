@@ -8,6 +8,7 @@ import time
 from geometry import Point, Vector, Line, distance
 from shapes import LineShape, Arc, Polygon, Circle
 from physics import cnstr
+from tools import Tool, Ink
 
 class UI:
     def __init__(self, app):
@@ -28,7 +29,7 @@ class UI:
         self.init_rider()
         self.make_rider()
 
-    def start_tkmainloop(self):
+    def start_mainloop(self):
         self.root.mainloop()
 
     def setup_window(self):
@@ -59,27 +60,24 @@ class UI:
             if self.app.data.pause: self.app.redo_cmd()
 
         def snap():
-            self.app.tools.snap = not self.app.tools.snap
-            display_t(self.app.tools.snap, "Line snapping on", "Line snapping off")
+            self.app.tm.snap_ruler = not self.app.tm.snap_ruler
+            display_t(self.app.tm.snap_ruler, "Line snapping on", "Line snapping off")
 
-        editMenu = tk.Menu(menubar, tearoff=False)
-        editMenu.add_command(label="Undo (ctrl+z)", command=undo)
-        editMenu.add_command(label="Redo (ctrl+shift+z)", command=redo)
-        editMenu.add_command(label="Toggle Line Snapping (s)", command=snap)
-        menubar.add_cascade(label="Edit", menu=editMenu)
+        edit_menu = tk.Menu(menubar, tearoff=False)
+        edit_menu.add_command(label="Undo (ctrl+z)", command=undo)
+        edit_menu.add_command(label="Redo (ctrl+shift+z)", command=redo)
+        edit_menu.add_command(label="Toggle Line Snapping (s)", command=snap)
+        menubar.add_cascade(label="Edit", menu=edit_menu)
 
-        toolMenu = tk.Menu(menubar)
-        toolMenu.add_command(label="Pencil (q)", command=lambda: self.app.tools.set_l_tool('pencil'))
-        toolMenu.add_command(label="Line (w)", command=lambda: self.app.tools.set_l_tool('make_line'))
-        types = tk.Menu(toolMenu)
-        types.add_command(label="Solid (1)", command=lambda: self.app.tools.set_line("solid"))
-        types.add_command(label="Acceleration (2)", command=lambda: self.app.tools.set_line("acc"))
-        types.add_command(label="Scenery (3)", command=lambda: self.app.tools.set_line("scene"))
-        toolMenu.add_cascade(label="Line Type", menu=types)
-        toolMenu.add_command(label="Eraser (e)", command=lambda: self.app.tools.set_l_tool('eraser'))
-        #    toolMenu.add_separator()
-        #    toolMenu.add_command(label="pan", command=set_r_tool(pan))
-        menubar.add_cascade(label="Tools", menu=toolMenu)
+        tool_menu = tk.Menu(menubar)
+        tool_menu.add_command(label="Pencil (q)", command=lambda: self.app.tm.take('left', Tool.Pencil))
+        tool_menu.add_command(label="Ruler (w)", command=lambda: self.app.tm.take('left', Tool.Ruler))
+        tool_menu.add_command(label="Eraser (e)", command=lambda: self.app.tm.take('left', Tool.Eraser))
+        tool_menu.add_separator()
+        tool_menu.add_command(label="Solid (1)", command=lambda: self.app.tm.set_ink(Ink.Solid))
+        tool_menu.add_command(label="Acceleration (2)", command=lambda: self.app.tm.set_ink(Ink.Acc))
+        tool_menu.add_command(label="Scenery (3)", command=lambda: self.app.tm.set_ink(Ink.Scene))
+        menubar.add_cascade(label="Tools", menu=tool_menu)
 
         # view
         def view_vector():
@@ -175,14 +173,14 @@ class UI:
         self.root.bind("<Button-2>", self.app.mmouse_pressed)
         self.root.bind("<B2-Motion>", self.app.mmouse_pressed)
         self.root.bind("<MouseWheel>", self.app.zoom_m)
-        self.app.tools.ctrlPressed = False
+        self.app.ctrlPressed = False
 
         def key_pressed(event):
             k = event.keysym
             c = event.char
             if k == "Control_L" or k == "Control_R" or k == "Command_L" or k == "Command_R":
-                self.app.tools.ctrlPressed = True
-            if self.app.tools.ctrlPressed:
+                self.app.ctrlPressed = True
+            if self.app.ctrlPressed:
                 return None
             elif c == "t":
                 if self.app.data.pause: self.app.update_positions()
@@ -194,11 +192,11 @@ class UI:
                 else:
                     self.app.stop()
             elif c == "q":
-                self.app.tools.set_l_tool('pencil')
+                self.app.tm.take(Tool.Pencil)
             elif c == "w":
-                self.app.tools.set_l_tool('make_line')
+                self.app.tm.take(Tool.Ruler)
             elif c == "e":
-                self.app.tools.set_l_tool('eraser')
+                self.app.tm.take(Tool.Eraser)
             elif c == "m":
                 slowmo()
             elif c == "r":
@@ -210,11 +208,11 @@ class UI:
             elif c == "b":
                 view_points()
             elif c == "1":
-                self.app.tools.lineType = "solid"
+                self.app.tm.set_ink(Ink.Solid)
             elif c == "2":
-                self.app.tools.lineType = "acc"
+                self.app.tm.set_ink(Ink.Acc)
             elif c == "3":
-                self.app.tools.lineType = "scene"
+                self.app.tm.set_ink(Ink.Scene)
             elif c == "d":
                 self.app.dump()
             elif c == "h":
@@ -234,7 +232,7 @@ class UI:
         def key_released(event):
             k = event.keysym
             if k == "Control_L" or k == "Control_R" or k == "Command_L" or k == "Command_R":
-                self.app.tools.ctrlPressed = False
+                self.app.ctrlPressed = False
 
         self.root.bind("<KeyPress>", key_pressed)
         self.root.bind("<KeyRelease>", key_released)
@@ -376,7 +374,7 @@ class UI:
             self.draw_flag()
         #    draw_tracer()
         self.draw_rider()
-        if self.app.data.viewVector:
+        if self.app.data.view_vector:
             self.draw_vectors()
         if self.app.data.viewCollisions:
             self.draw_collisions()
@@ -439,7 +437,7 @@ class UI:
     def closest_point_to_line_point(self, pos):
         """finds the closest endpoint of a line segment to a given point"""
         closestPoint = pos
-        minDist = self.app.tools.snapRadius / self.app.track.zoom
+        minDist = self.app.tm.snap_radius / self.app.track.zoom
         for line in self.lines_in_screen():
             dist = distance(line.r1, pos)
             if dist < minDist:
@@ -461,9 +459,9 @@ class UI:
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
             color = "black"
             arrow = None
-            if line.type == "scene" and paused:
+            if line.ink == Ink.Scene and paused:
                 color = "green"
-            if line.type == "acc" and paused:
+            if line.ink == Ink.Acc and paused:
                 color = "red"
                 arrow = tk.LAST
             self.canvas.create_line(a.x, a.y, b.x, b.y, width=w,
@@ -475,15 +473,14 @@ class UI:
         if self.app.data.tempLine != None and paused:
             line = self.app.data.tempLine
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
-            minLen = self.app.tools.snapRadius
-            if distance(a, b) < minLen:
+            if distance(a, b) < self.app.tm.snap_radius:
                 color = "red"  # can't make this line
             else:
                 color = "grey"
             self.canvas.create_line(a.x, a.y, b.x, b.y, fill=color)
 
     def draw_points(self):
-        r = self.app.tools.snapRadius
+        r = self.app.tm.snap_radius
         #    for point in canvas.data.points:
         #        pnt = adjust_pz(point.r)
         #        x, y = pnt.x, pnt.y
@@ -582,12 +579,12 @@ class UI:
         tools_to_cur = {
             'default': 'arrow',
             'pencil': 'pencil',
-            'make_line': 'crosshair',
+            'ruler': 'crosshair',
             'eraser': 'circle'
         }
         cur = tools_to_cur['default']
         if self.app.data.pause:
-            cur = tools_to_cur[self.app.tools.get_l_tool_name()]
+            cur = tools_to_cur[self.app.tm.get_tool_name('left')]
         self.canvas.config(cursor=cur)
 
     def do_help(self):

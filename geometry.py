@@ -39,15 +39,15 @@ class Line(object):
 
 class SolidLine(Line):
     """collidable lines"""
-    def __init__(self, r1, r2, lineType):
+    def __init__(self, r1, r2, ink):
         super(SolidLine, self).__init__(r1, r2)
         #       self.dir = (self.r2-self.r1).normalize() #direction the line points in
         #normal to line, 90 degrees ccw (to the left). DARN YOU FLIPPED COORDINATES
         #       self.norm = vector(self.dir.y, -self.dir.x)
-        self.type = lineType
+        self.ink = ink
 
     def __repr__(self):
-        return "solidLine" + str((self.r1, self.r2, self.type))
+        return "solidLine" + str((self.r1, self.r2, self.ink))
 
 class Vector(object):
     #slots for optimization...?

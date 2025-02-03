@@ -1,5 +1,7 @@
 
 
+from tool_helpers import Ink
+
 class Grid:
     def __init__(self, app):
         self.app = app
@@ -10,12 +12,12 @@ class Grid:
 
     def add_to_grid(self, line):
         cells = self.get_grid_cells(line)
-        if line.type == "scene":
+        if line.ink == Ink.Scene:
             grid = self.app.grid.scenery
         else:
             grid = self.app.grid.solids
         for cell in cells:
-            lines = grid.get(cell, set([]))
+            lines = grid.get(cell, set())
             lines |= {line}
             grid[cell] = lines
 
@@ -53,7 +55,7 @@ class Grid:
     def remove_from_grid(self, line):
         """removes the line in the cells the line exists in"""
         removedCells = self.get_grid_cells(line)  # list of cell positions
-        if line.type == "scene":
+        if line.ink == Ink.Scene:
             grid = self.scenery
         else:
             grid = self.solids

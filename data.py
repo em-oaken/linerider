@@ -18,7 +18,7 @@ class Data:
     iterations = 10
     maxiter = 100
     viewLines = True
-    viewVector = False
+    view_vector = False
     viewPoints = False
     viewGrid = False
     viewStatus = True

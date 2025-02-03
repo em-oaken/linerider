@@ -3,6 +3,7 @@
 import copy
 
 from geometry import Line, Vector, distance
+from tool_helpers import Ink
 
 
 class Constraint:
@@ -209,7 +210,7 @@ def resolve_collision(pnt, data, grid, rider):
             collidingLine = collidingLines[0]
         #set future point to above point, evaluate acc line if necessary
         pnt.r = futurePoint
-        if collidingLine.type == "acc":
+        if collidingLine.ink == Ink.Acc:
             accLines.add(collidingLine)
         hasCollided = True
         maxiter -= 1
