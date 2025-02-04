@@ -6,6 +6,7 @@ from geometry import Line
 class Grid:
     def __init__(self, app):
         self.app = app
+        self.gridSize = 50
 
     def reset_grid(self):
         for line in self.app.track.lines:
@@ -27,7 +28,6 @@ class Grid:
         firstCell = self.grid_pos(line.r1)
         lastCell = self.grid_pos(line.r2)
         if firstCell[0] > lastCell[0]:  # going in negative x direction MAKES BUGS
-            # JUST FLIP'EM
             firstCell, lastCell = lastCell, firstCell
         cells = [firstCell]
         gridInts = self.get_grid_ints(line, firstCell, lastCell)
@@ -71,7 +71,7 @@ class Grid:
         """returns a list of the positions of the cells at and around the pos"""
         cells = {}
         x, y = self.grid_pos(pos)
-        g = self.app.data.gridSize
+        g = self.gridSize
         return [(x, y), (x + g, y), (x + g, y + g), (x, y + g), (x - g, y + g),
                 (x - g, y), (x - g, y - g), (x, y - g), (x + g, y - g)]
 
@@ -79,11 +79,11 @@ class Grid:
         return self.grid_floor(pnt.x), self.grid_floor(pnt.y)
 
     def grid_floor(self, x):
-        return int(x - x % self.app.data.gridSize)
+        return int(x - x % self.gridSize)
 
     def get_grid_ints(self, line, firstCell, lastCell):
         a, b, c = line.linear_equation()
-        dx = dy = self.app.data.gridSize  # defined to be always positive
+        dx = dy = self.gridSize  # defined to be always positive
         if lastCell[1] < firstCell[1]:  # y is decreasing
             dy *= -1
         gridInts = {}

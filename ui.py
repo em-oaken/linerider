@@ -384,9 +384,8 @@ class UI:
             self.do_help()
 
     def show_grid(self):
-        window = self.app.data.windowSize
         topLeft, bottomRight = self.app.data.topLeft, self.app.data.bottomRight
-        g = self.app.data.gridSize
+        g = self.app.grid.gridSize
         topLeft = self.app.grid.grid_pos(topLeft)
         bottomRight = self.app.grid.grid_pos(bottomRight + Vector(g, g))
         for x in range(topLeft[0], bottomRight[0], g):
@@ -400,7 +399,7 @@ class UI:
 
     def draw_grid(self):
         """for debugging"""
-        g = self.app.data.gridSize
+        g = self.app.grid.gridSize
         self.show_grid()
         for cell in self.app.grid.solids:  # cells are positions/keys in the grid dict
             cell = Vector(cell)
