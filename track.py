@@ -35,18 +35,18 @@ class Track:
         inverse = (line, self.add_line)
         self.app.add_to_history(inverse, undo, redo)
 
-    def remove_lines_list(self, pos, radius):
+    def get_lines_around(self, pos, radius):
         """Returns a set of lines to be removed, part of the eraser"""
-        removedLines = set()
+        lines_found = set()
         cells = self.app.grid.grid_neighbors(pos)  # list of 9 closest cell positions
         for gPos in cells:  # each cell has a position/key on the grid/dict
             cell = self.app.grid.solids.get(gPos, set())  # each cell is a set of lines
             for line in cell:
                 if distance_from_line(pos, line, self.app.data) * self.zoom <= radius:
-                    removedLines.add(line)
+                    lines_found.add(line)
             cell = self.app.grid.scenery.get(gPos, set())
             for line in cell:
                 if distance_from_line(pos, line, self.app.data) * self.zoom <= radius:
-                    removedLines.add(line)
-        return removedLines
+                    lines_found.add(line)
+        return lines_found
 

@@ -1,6 +1,7 @@
 
 
 from tool_helpers import Ink
+from geometry import Line
 
 class Grid:
     def __init__(self, app):
@@ -105,3 +106,12 @@ class Grid:
             x = (c - b * y) / a
             gridInts[x] = yInc
         return gridInts
+
+    def get_solid_lines(self, pnt):
+        """returns a set of lines that exist in the same cells as the point"""
+        vLine = Line(pnt.r0, pnt.r)
+        lines = set()
+        for gPos in self.get_grid_cells(vLine):  # list of cell positions
+            cell = self.solids.get(gPos, set())
+            lines |= cell  # add to set of lines to check collisions
+        return lines

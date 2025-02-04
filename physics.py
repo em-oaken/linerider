@@ -55,17 +55,6 @@ def cnstr(pnt1, pnt2, scale:float=1):
     length = (pnt1.r - pnt2.r).magnitude()
     return Constraint(pnt1, pnt2, length * scale)
 
-def get_collision_lines(pnt, grid):
-    """returns a set of lines that exist in the same cells as the point"""
-    vLine = Line(pnt.r0, pnt.r)
-    cells = grid.get_grid_cells(vLine)  #list of cell positions
-    lines = set()
-    solids = grid.solids
-    for gPos in cells:
-        cell = solids.get(gPos, set())
-        lines |= cell  #add to set of lines to check collisions
-    return lines
-
 def det(a, b, c, d):
     """determinant"""
     # | a b |
@@ -194,7 +183,7 @@ def resolve_collision(pnt, data, grid, rider):
     while hasCollided == True and maxiter > 0:
         hasCollided = False
         #get the lines the point may collide with
-        lines = get_collision_lines(pnt, grid)
+        lines = grid.get_solid_lines(pnt)
         #get the collision points of the lines the point actually collides with
         collidingLines, collisionPoints, intersections = get_colliding_lines(pnt, lines, data)
         #no collisions? break

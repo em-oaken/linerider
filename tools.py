@@ -104,7 +104,7 @@ class Eraser:
         pos = Vector(event.x, event.y)
         if self.tm.app.data.pause and event.ink != "5" and in_window(pos, self.tm.app.data):  # on press and move
             pos = self.tm.app.inverse_pz(pos)
-            removed_lines = self.tm.app.track.remove_lines_list(pos, self.radius)
+            removed_lines = self.tm.app.track.get_lines_around(pos, self.radius)
             if len(removed_lines) > 0:
                 for line in removed_lines:
                     if line in self.tm.app.track.lines:
@@ -186,7 +186,7 @@ class Pan:
 #     pos = Vector(event.x, event.y)
 #     if app.data.pause == True and event.type != "5" and in_window(pos, app.data):
 #         pos = app.inverse_pz(pos)
-#         removedLines = app.track.remove_lines_list(pos)
+#         removedLines = app.track.get_lines_around(pos)
 #         if len(removedLines) > 0:
 #             for line in removedLines:
 #                 if line in app.track.lines:
