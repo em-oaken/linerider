@@ -11,7 +11,6 @@ from ui import UI
 from data import Data
 from track import Track
 from rider import Rider
-from grid import Grid
 from tools import ToolManager
 from geometry import Vector
 from physics import resolve_collision
@@ -21,24 +20,19 @@ class App:
         self.data = Data()
         self.track = Track(app=self)
         self.rider = Rider()
-        self.grid = Grid(app=self)
         self.tm = ToolManager(self)
         self.init()
+        self.ctrlPressed = False
         self.ui = UI(app=self)
         self.timer_fired()
         self.ui.start_mainloop()
 
 
     def init(self):
-        self.ctrlPressed = False
-        self.data.help = False
-        self.data.helpIndex = 0
-        self.grid.solids = dict()
-        self.grid.scenery = dict()
         self.data.undoStack = []
         self.data.redoStack = []
-        self.data.tempPoint = Vector(0, 0)
-        self.data.tempLine = None
+        # self.data.tempPoint = Vector(0, 0)  # Probably useless, was used for tools
+        self.data.tempLine = None  #TODO: Need to understand it!
         self.data.pause = True
         self.data.cam = self.track.panPos
         self.data.flag = False
@@ -108,7 +102,7 @@ class App:
                             print(error)
                             window.after(1000, do_load)
                     self.ui.make_rider()
-                    self.grid.reset_grid()
+                    self.track.grid.reset_grid()
 
                 cancelButton.config(text="Close")
                 loadButton.config(text="Load", command=load)
@@ -197,7 +191,7 @@ class App:
         if os.path.isfile(path):
             with open(path, "rb") as track:
                 self.track = pickle.load(track, encoding='latin1')
-            self.grid.reset_grid()
+            self.track.grid.reset_grid()
 
     def track_modified(self, isMdfy=True):
         self.data.modified = isMdfy
@@ -243,7 +237,7 @@ class App:
             self.data.tempLine = None
 
     def update_positions(self):
-        if self.data.viewCollisions:
+        if self.data.view_collisions:
             self.data.collisionPoints = []
         for pnt in self.rider.points:
             # first, update points based on inertia, gravity, and drag
@@ -275,7 +269,7 @@ class App:
             for cnstr in self.rider.constraints:
                 cnstr.resolve_constraint()
             for pnt in self.rider.points:
-                accLines = resolve_collision(pnt, self.data, self.grid, self.rider)
+                accLines = resolve_collision(pnt, self.data, self.track.grid, self.rider)
                 if len(accLines) > 0:  # contains lines
                     self.rider.accQueueNow[pnt] = accLines
         scarfStrength = 1

@@ -4,20 +4,22 @@ from tool_helpers import Ink
 from geometry import Line
 
 class Grid:
-    def __init__(self, app):
-        self.app = app
-        self.gridSize = 50
+    def __init__(self, track):
+        self.track = track
+        self.spacing = 50
+        self.solids = dict()
+        self.scenery = dict()
 
     def reset_grid(self):
-        for line in self.app.track.lines:
+        for line in self.track.lines:
             self.add_to_grid(line)
 
     def add_to_grid(self, line):
         cells = self.get_grid_cells(line)
         if line.ink == Ink.Scene:
-            grid = self.app.grid.scenery
+            grid = self.scenery
         else:
-            grid = self.app.grid.solids
+            grid = self.solids
         for cell in cells:
             lines = grid.get(cell, set())
             lines |= {line}
@@ -43,11 +45,11 @@ class Grid:
     def grid_in_screen(self):
         """returns a list of visible cells"""
         # absolute positions
-        topLeft = self.grid_pos(self.app.data.topLeft)
-        bottomRight = self.grid_pos(self.app.data.bottomRight)
+        topLeft = self.grid_pos(self.track.app.data.topLeft)
+        bottomRight = self.grid_pos(self.track.app.data.bottomRight)
         x1, x2 = topLeft[0], bottomRight[0]
         y1, y2 = topLeft[1], bottomRight[1]
-        g = self.app.data.gridSize
+        g = self.spacing
         cols = range(x1, x2 + g, g)
         rows = range(y1, y2 + g, g)
         cells = [(x, y) for x in cols for y in rows]
@@ -71,7 +73,7 @@ class Grid:
         """returns a list of the positions of the cells at and around the pos"""
         cells = {}
         x, y = self.grid_pos(pos)
-        g = self.gridSize
+        g = self.spacing
         return [(x, y), (x + g, y), (x + g, y + g), (x, y + g), (x - g, y + g),
                 (x - g, y), (x - g, y - g), (x, y - g), (x + g, y - g)]
 
@@ -79,11 +81,11 @@ class Grid:
         return self.grid_floor(pnt.x), self.grid_floor(pnt.y)
 
     def grid_floor(self, x):
-        return int(x - x % self.gridSize)
+        return int(x - x % self.spacing)
 
     def get_grid_ints(self, line, firstCell, lastCell):
         a, b, c = line.linear_equation()
-        dx = dy = self.gridSize  # defined to be always positive
+        dx = dy = self.spacing  # defined to be always positive
         if lastCell[1] < firstCell[1]:  # y is decreasing
             dy *= -1
         gridInts = {}

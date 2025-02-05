@@ -203,7 +203,7 @@ def resolve_collision(pnt, data, grid, rider):
             accLines.add(collidingLine)
         hasCollided = True
         maxiter -= 1
-        if data.viewCollisions:
+        if data.view_collisions:
             data.collisionPoints += [copy.copy(futurePoint)]
         if pnt == rider.points[0]:  # Content of sensitive_butt()
             # LINE RIDER'S BUTT IS SENSITIVE. TOUCH IT AND HE FALLS OFF THE SLED.

@@ -18,6 +18,9 @@ class UI:
         self.setup_window()
         self.canvas.pack(fill="both", expand=True)
 
+        self.help_popup = False
+        self.help_index = 0
+
         def resize(event):
             self.app.data.windowSize = Vector(event.width, event.height)
             oldCenter = copy.copy(self.app.data.center)
@@ -36,11 +39,7 @@ class UI:
         self.root.title("Line Rider Python")
 
         def display_t(boolean, m1, m2):
-            if boolean:
-                message = m1
-            else:
-                message = m2
-            self.app.data.message = "  " + message
+            self.app.data.message = "  " + m1 if boolean else m2
             self.canvas.after(1000, self.app.data.show_mdfy)
 
         menubar = tk.Menu(self.root)
@@ -95,6 +94,7 @@ class UI:
 
         def view_grid():
             self.app.data.view_grid = not self.app.data.view_grid
+            print('o')
             display_t(self.app.data.view_grid, "Showing grid", "hiding grid")
 
         def view_status():
@@ -157,7 +157,7 @@ class UI:
 
         # help
         def view_help():
-            self.app.data.help = not self.app.data.help
+            self.help_popup = not self.help_popup
 
         helpMenu = tk.Menu(menubar)
         helpMenu.add_command(label="Help", command=view_help)
@@ -221,12 +221,12 @@ class UI:
                 snap()
             elif c == "c":
                 view_collisions()
-            if self.app.data.help:
-                i = self.app.data.helpIndex
+            if self.help_popup:
+                i = self.help_index
                 if k == "Left" and i > 0:
-                    self.app.data.helpIndex -= 1
+                    self.help_index -= 1
                 if k == "Right" and i < 7:
-                    self.app.data.helpIndex += 1
+                    self.help_index += 1
             self.redraw_all()
 
         def key_released(event):
@@ -364,11 +364,11 @@ class UI:
 
     def redraw_all(self):
         self.canvas.delete(tk.ALL)
-        if self.app.data.viewGrid:
+        if self.app.data.view_grid:
             self.draw_grid()
-        if self.app.data.viewLines:
+        if self.app.data.view_lines:
             self.draw_lines()
-        if self.app.data.viewPoints:
+        if self.app.data.view_points:
             self.draw_points()
         if self.app.data.flag:
             self.draw_flag()
@@ -376,18 +376,18 @@ class UI:
         self.draw_rider()
         if self.app.data.view_vector:
             self.draw_vectors()
-        if self.app.data.viewCollisions:
+        if self.app.data.view_collisions:
             self.draw_collisions()
-        if self.app.data.viewStatus:
+        if self.app.data.view_status:
             self.status_display()
-        if self.app.data.help:
+        if self.help_popup:
             self.do_help()
 
     def show_grid(self):
         topLeft, bottomRight = self.app.data.topLeft, self.app.data.bottomRight
-        g = self.app.grid.gridSize
-        topLeft = self.app.grid.grid_pos(topLeft)
-        bottomRight = self.app.grid.grid_pos(bottomRight + Vector(g, g))
+        g = self.app.track.grid.spacing
+        topLeft = self.app.track.grid.grid_pos(topLeft)
+        bottomRight = self.app.track.grid.grid_pos(bottomRight + Vector(g, g))
         for x in range(topLeft[0], bottomRight[0], g):
             a, b = Vector(x, topLeft[1]), Vector(x, bottomRight[1])
             a, b = self.app.adjust_pz(a), self.app.adjust_pz(b)
@@ -399,9 +399,9 @@ class UI:
 
     def draw_grid(self):
         """for debugging"""
-        g = self.app.grid.gridSize
+        g = self.app.track.grid.spacing
         self.show_grid()
-        for cell in self.app.grid.solids:  # cells are positions/keys in the grid dict
+        for cell in self.app.track.grid.solids:  # cells are positions/keys in the grid dict
             cell = Vector(cell)
             cell2 = cell + Vector(g, g)
             cell, cell2 = self.app.adjust_pz(cell), self.app.adjust_pz(cell2)
@@ -409,9 +409,9 @@ class UI:
         for point in self.app.rider.points:
             velocity = point.r - point.r0
             velLine = Line(point.r, point.r + velocity)
-            cells = self.app.grid.get_grid_cells(velLine)
+            cells = self.app.track.grid.get_grid_cells(velLine)
             for cell in cells:
-                if cell in self.app.grid.solids:
+                if cell in self.app.track.grid.solids:
                     color = "green"
                 else:
                     color = "cyan"
@@ -422,13 +422,13 @@ class UI:
 
     def lines_in_screen(self):
         lines = set()
-        for gPos in self.app.grid.grid_in_screen():
+        for gPos in self.app.track.grid.grid_in_screen():
             try:  # a bit more efficient than using a conditional
-                lines |= self.app.grid.solids[gPos]
+                lines |= self.app.track.grid.solids[gPos]
             except KeyError:
                 pass
             try:
-                lines |= self.app.grid.scenery[gPos]
+                lines |= self.app.track.grid.scenery[gPos]
             except KeyError:
                 pass
         return lines
@@ -452,7 +452,7 @@ class UI:
         z = self.app.track.zoom
         paused = self.app.data.pause
         w = 3 * z
-        if self.app.data.viewThinLines:
+        if self.app.data.view_thin_lines:
             w = 1
         for line in self.lines_in_screen():  # RENDERS ONLY VISIBLE LINES
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
@@ -568,7 +568,7 @@ class UI:
         message = self.app.track.name
         if len(self.app.track.lines) == 0:
             message = "Press H for help"
-        if self.app.data.help:
+        if self.help_popup:
             message = "Press H to close"
         message += " " + self.app.data.message
         info = "%s\n%d frames per second\n%d lines\n%s" % (message, fps, lineCount, speed)
@@ -730,7 +730,7 @@ class UI:
                 self.canvas.create_line(a.x, a.y, b.x, b.y, width=1, cap=tk.ROUND)
 
         helpContents = [to_play, tools, line_types, playback, view, saving, tips1, tips2]
-        i = self.app.data.helpIndex
+        i = self.help_index
         helpContents[i]()
         self.canvas.create_text(BR.x - 10, TL.y + 5, anchor=tk.NE,
                            font=("Arial", "15"), text=str(i + 1) + "/8")
