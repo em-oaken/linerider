@@ -4,6 +4,7 @@ import copy
 import tkinter as tk
 from tkinter import messagebox
 import time
+import pickle
 
 from geometry import Point, Vector, Line, distance
 from shapes import LineShape, Arc, Polygon, Circle
@@ -18,6 +19,7 @@ class UI:
         self.setup_window()
         self.canvas.pack(fill="both", expand=True)
 
+        self.temp_message = ''
         self.help_popup = False
         self.help_index = 0
 
@@ -36,27 +38,30 @@ class UI:
         self.root.mainloop()
 
     def setup_window(self):
-        self.root.title("Line Rider Python")
+        self.root.title("Line Rider")
+
+        def reset_temp_message():
+            self.temp_message = ''
 
         def display_t(boolean, m1, m2):
-            self.app.data.message = "  " + m1 if boolean else m2
-            self.canvas.after(1000, self.app.data.show_mdfy)
+            self.temp_message = m1 if boolean else m2
+            self.canvas.after(1000, reset_temp_message)
 
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
         # FILE
         fileMenu = tk.Menu(menubar, tearoff=False)
-        fileMenu.add_command(label="New (ctrl+n)", command=self.app.new_track)
-        fileMenu.add_command(label="Load (ctrl+o)", command=self.app.load_track)
-        fileMenu.add_command(label="Save (ctrl+s)", command=self.app.save_track)
-        menubar.add_cascade(label="File", menu=fileMenu)
+        fileMenu.add_command(label='New (ctrl+n)', command=self.app.new_track)
+        fileMenu.add_command(label='Open (ctrl+o)', command=self.app.open_track)
+        fileMenu.add_command(label='Save (ctrl+s)', command=self.app.save_track)
+        menubar.add_cascade(label='File', menu=fileMenu)
 
         # EDIT
         def undo():
-            if self.app.data.pause: self.app.undo_cmd()
+            if self.app.is_paused: self.app.undo_cmd()
 
         def redo():
-            if self.app.data.pause: self.app.redo_cmd()
+            if self.app.is_paused: self.app.redo_cmd()
 
         def snap():
             self.app.tm.snap_ruler = not self.app.tm.snap_ruler
@@ -108,11 +113,11 @@ class UI:
                       "Hiding collision points")
 
         def go_to_start():
-            if self.app.data.pause:
+            if self.app.is_paused:
                 self.app.track.panPos = self.app.track.startPoint - self.app.data.center
 
         def last_line():
-            if self.app.data.pause and len(self.app.track.lines) > 0:
+            if self.app.is_paused and len(self.app.track.lines) > 0:
                 lastLine = self.app.track.lines[-1].r2
                 self.app.track.panPos = lastLine - self.app.data.center
 
@@ -140,7 +145,7 @@ class UI:
 
         # playback
         def slowmo():
-            if not self.app.data.pause:
+            if not self.app.is_paused:
                 self.app.data.slowmo = not self.app.data.slowmo
 
         playMenu = tk.Menu(menubar)
@@ -183,11 +188,11 @@ class UI:
             if self.app.ctrlPressed:
                 return None
             elif c == "t":
-                if self.app.data.pause: self.app.update_positions()
+                if self.app.is_paused: self.app.update_positions()
             elif c == "p":
                 self.app.play_pause()
             elif c == " ":
-                if self.app.data.pause:
+                if self.app.is_paused:
                     self.app.play_pause()
                 else:
                     self.app.stop()
@@ -239,22 +244,24 @@ class UI:
         self.root.bind("<Home>", lambda e: go_to_start())
         self.root.bind("<End>", lambda e: last_line())
         if os.name == "mac":
-            self.root.bind("<Command-z>", lambda e: undo())
-            self.root.bind("<Command-Shift-Z>", lambda e: redo())
-            self.root.bind("<Command-s>", lambda e: self.app.fast_save())
-            self.root.bind("<Command-p>", lambda e: self.app.play_from_beginning())
-            self.root.bind("<Command-o>", lambda e: self.app.load_track())
-            self.root.bind("<Command-n>", lambda e: self.app.new_track())
-            self.root.bind("<Command-f>", lambda e: self.app.reset_flag())
+            self.root.bind("<Command-z>", lambda _: undo())
+            self.root.bind("<Command-Shift-Z>", lambda _: redo())
+            self.root.bind("<Command-s>", lambda _: self.app.save_track(popup=False))
+            self.root.bind("<Command-Shift-s>", lambda _: self.app.save_track(popup=True))
+            self.root.bind("<Command-p>", lambda _: self.app.play_from_beginning())
+            self.root.bind("<Command-o>", lambda _: self.app.open_track())
+            self.root.bind("<Command-n>", lambda _: self.app.new_track())
+            self.root.bind("<Command-f>", lambda _: self.app.reset_flag())
         else:
-            self.root.bind("<Control-z>", lambda e: undo())
-            self.root.bind("<Control-Shift-Z>", lambda e: redo())
-            self.root.bind("<Control-s>", lambda e: self.app.fast_save())
-            self.root.bind("<Control-p>", lambda e: self.app.play_from_beginning())
-            self.root.bind("<Control-o>", lambda e: self.app.load_track())
-            self.root.bind("<Control-n>", lambda e: self.app.new_track())
-            self.root.bind("<Control-f>", lambda e: self.app.reset_flag())
-        self.root.protocol("WM_DELETE_WINDOW", lambda: self.app.on_exit_save())
+            self.root.bind("<Control-z>", lambda _: undo())
+            self.root.bind("<Control-Shift-Z>", lambda _: redo())
+            self.root.bind("<Control-s>", lambda _: self.app.save_track(popup=False))
+            self.root.bind("<Control-Shift-s>", lambda _: self.app.save_track(popup=True))
+            self.root.bind("<Control-p>", lambda _: self.app.play_from_beginning())
+            self.root.bind("<Control-o>", lambda _: self.app.open_track())
+            self.root.bind("<Control-n>", lambda _: self.app.new_track())
+            self.root.bind("<Control-f>", lambda _: self.app.reset_flag())
+        self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_exit())
 
     def init_rider(self):
         """loads the vector graphics of the rider into memory"""
@@ -372,7 +379,6 @@ class UI:
             self.draw_points()
         if self.app.data.flag:
             self.draw_flag()
-        #    draw_tracer()
         self.draw_rider()
         if self.app.data.view_vector:
             self.draw_vectors()
@@ -450,7 +456,7 @@ class UI:
 
     def draw_lines(self):
         z = self.app.track.zoom
-        paused = self.app.data.pause
+        paused = self.app.is_paused
         w = 3 * z
         if self.app.data.view_thin_lines:
             w = 1
@@ -553,26 +559,28 @@ class UI:
             self.canvas.create_oval(pnt.x + 2, pnt.y + 2, pnt.x - 2, pnt.y - 2, fill="yellow", width=0)
 
     def status_display(self):
-        """displays fps"""
-        timeBefore = self.app.data.timeCurrent
-        self.app.data.timeCurrent = timeCurrent = time.time()
-        duration = timeCurrent - timeBefore
-        if duration != 0:
-            fps = round(1 / float(duration))
-        else:
-            fps = 0
-        lineCount = len(self.app.track.lines)
-        speed = ""
-        if not self.app.data.pause:
-            speed = str(round(self.app.eval_speed(), 1)) + " pixels per frame"
-        message = self.app.track.name
+        """Displays info on top-left corner"""
+        message = f'Track: {self.app.track.name}'
         if len(self.app.track.lines) == 0:
             message = "Press H for help"
         if self.help_popup:
             message = "Press H to close"
-        message += " " + self.app.data.message
-        info = "%s\n%d frames per second\n%d lines\n%s" % (message, fps, lineCount, speed)
-        self.canvas.create_text(5, 0, anchor="nw", text=info)
+        message += " " + self.app.track.save_statustag
+
+        tmp_msg = '' if self.temp_message == '' else self.temp_message + '\n'
+
+        prev_time_now = self.app.time_now
+        self.app.time_now = time.time()
+        duration = self.app.time_now - prev_time_now
+        fps = 1/float(duration) if duration != 0 else 0
+
+        line_count = len(self.app.track.lines)
+        speed = f'{self.app.eval_speed():.1f} pixels/frame' if not self.app.is_paused else ''
+
+        self.canvas.create_text(
+            5, 0, anchor="nw",
+            text=f'{message}\n{tmp_msg}{fps:.0f} fps\n{line_count} lines in track\n{speed}'
+        )
 
     def update_cursor(self):
         tools_to_cur = {
@@ -582,9 +590,20 @@ class UI:
             'eraser': 'circle'
         }
         cur = tools_to_cur['default']
-        if self.app.data.pause:
+        if self.app.is_paused:
             cur = tools_to_cur[self.app.tm.get_tool_name('left')]
         self.canvas.config(cursor=cur)
+
+    def on_exit(self):
+        if not self.app.save_track():
+            if not self.open_popup('ok_or_cancel', 'Unsaved changes!', 'Failed to save!\nExit anyways?'):
+                return
+        self.root.destroy()
+
+
+    def open_popup(self, type='ok_or_cancel', title='', content=''):
+        if type == 'ok_or_cancel':
+            return messagebox.askokcancel(title, content)
 
     def do_help(self):
         center = self.app.data.center
@@ -751,3 +770,77 @@ class UI:
     Line Rider Python will be discontinued after
     spring lines and trigger lines are implemented""")
 
+
+"""SavePopup
+This is the window to....save the track!"""
+class SavePopup:
+    def __init__(self, title, ini_trackname, clicksave_callback):
+        self.window = tk.Toplevel()
+        self.window.title(title)
+        self.window.geometry('300x80')
+
+        self.clicksave_callback = clicksave_callback
+        self.trackname = ini_trackname
+
+        self.trackname_input = tk.Entry(self.window)
+        self.trackname_input.insert(0, self.trackname)
+        self.save_btn = tk.Button(
+            self.window,
+            text="Save",
+            command=lambda: self.clicksave_callback(self, self.trackname_input.get())
+        )
+        self.trackname_input.pack(fill=tk.X, expand=True, padx=10, pady=20)
+        self.save_btn.pack()
+
+    def ask_if_overwrite(self):
+        self.trackname_input.delete(0, tk.END)
+        self.trackname_input.insert(0, 'Overwrite track?')
+        self.save_btn.config(
+            text='Yes',
+            command=self.clicksave_callback(self, self.trackname_input.get(), overwrite=True)
+        )
+        self.cancel_btn = tk.Button(self.window, text='No', command=self.revert_to_ini_screen)
+        self.cancel_btn.pack()
+
+    def revert_to_ini_screen(self, destroy_cancel_btn=True):
+        self.trackname_input.delete(0, tk.END)
+        self.trackname_input.insert(0, self.trackname)
+        self.save_btn = tk.Button(
+            self.window,
+            text='Save',
+            command=lambda: self.clicksave_callback(self, self.trackname_input.get())
+        )
+        if destroy_cancel_btn:
+            self.cancel_btn.destroy()
+
+    def success(self):
+        self.trackname_input.insert(0, 'Saved!')
+        self.window.after(1000, lambda: self.window.destroy())
+
+    def fail(self):
+        self.trackname_input.insert(0, 'Failed to save! D:')
+        self.window.after(1000, lambda: self.revert_to_ini_screen(False))
+
+
+"""LoadPopup
+This is the window to....load a track!"""
+class LoadPopup:
+    def __init__(self, title, track_list, clickopen_callback):
+        self.clickopen_callback = clickopen_callback
+        self.window = tk.Toplevel()
+        self.window.title(title)
+        self.window.geometry('400x300')
+        self.loadWindow = tk.Listbox(self.window)
+        self.loadWindow.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.cancel_btn = tk.Button(self.window, text="Cancel", command=exit)
+        self.open_btn = tk.Button(
+            self.window,
+            text="Open",
+            command=lambda: self.clickopen_callback(self.loadWindow.get(tk.ACTIVE))
+        )
+        self.open_btn.pack()
+        self.cancel_btn.pack()
+
+        # Load existing tracks
+        for track in track_list:
+            self.loadWindow.insert(0, track)

@@ -2,6 +2,8 @@
 Class Track
 """
 
+import datetime
+
 from grid import Grid
 from geometry import Vector
 from physics import distance_from_line
@@ -10,15 +12,36 @@ from physics import distance_from_line
 class Track:
     def __init__(self, app):
         self.app = app
+        self._name = f'Untitled, created on {datetime.datetime.now():%Y-%m-%d %H-%M-%S}'
+        self.orig_name = True
+        self.save_statustag = ''
         self.lines = []
-        self.name = "Untitled"
+        self.edits_not_saved = False
         self.startPoint = Vector(0, 0)
 
         self.grid = Grid(track=self)
 
+        self.imexport_attrs = ('lines', )  #, 'grid')
+
         # These 2 should be part of UI
         self.zoom = 1
         self.panPos = Vector(0, 0) - app.data.center
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        self.orig_name = False
+
+    def track_modified(self, isMdfy=True):
+        self.edits_not_saved = isMdfy
+        self.show_mdfy()
+
+    def show_mdfy(self):
+        self.save_statustag = '*' if self.edits_not_saved else ''
 
     def add_line(self, line, undo=False, redo=False):
         """Adds a single line to the track"""
@@ -51,4 +74,12 @@ class Track:
                 if distance_from_line(pos, line, self.app.data) * self.zoom <= radius:
                     lines_found.add(line)
         return lines_found
+
+    # Loading and saving
+    def import_(self):
+        pass
+
+    def build_export_payload(self):
+        return {attr: eval(f'self.{attr}') for attr in self.imexport_attrs}
+
 

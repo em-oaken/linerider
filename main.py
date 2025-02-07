@@ -4,46 +4,47 @@ import time
 import os
 import pickle
 import tkinter as tk
-from tkinter import messagebox
 import copy
+from pathlib import Path
 
-from ui import UI
+from ui import UI, SavePopup, LoadPopup
 from data import Data
 from track import Track
 from rider import Rider
 from tools import ToolManager
-from geometry import Vector
 from physics import resolve_collision
 
 class App:
     def __init__(self):
+        self.ctrlPressed = False
+
         self.data = Data()
         self.track = Track(app=self)
         self.rider = Rider()
         self.tm = ToolManager(self)
-        self.init()
-        self.ctrlPressed = False
+        self.start_session()
         self.ui = UI(app=self)
         self.timer_fired()
+        self.dir_tracks = Path('./savedLines/')
+        self.dir_tracks.mkdir(exist_ok=True)
+
         self.ui.start_mainloop()
 
+    def start_session(self):
+        self.time_now = time.time()
+        self.is_paused = True
+        self.undoStack = []
+        self.redoStack = []
 
-    def init(self):
-        self.data.undoStack = []
-        self.data.redoStack = []
-        # self.data.tempPoint = Vector(0, 0)  # Probably useless, was used for tools
-        self.data.tempLine = None  #TODO: Need to understand it!
-        self.data.pause = True
+        # TODO: Need to understand those below!
+        self.data.tempLine = None
         self.data.cam = self.track.panPos
         self.data.flag = False
-        self.data.timeCurrent = time.time()
-        self.data.modified = False
         self.data.collisionPoints = []
-        self.data.tracer = []
 
     def timer_fired(self):
         start = time.perf_counter()
-        if not self.data.pause:
+        if not self.is_paused:
             self.update_positions()
         self.update_camera()
         self.ui.update_cursor()
@@ -54,19 +55,43 @@ class App:
         delta = self.data.timeDelta - delay
         delta = max(1, delta)
         slow = max(4, 200 - delay)
-        if self.data.slowmo and not self.data.pause:
+        if self.data.slowmo and not self.is_paused:
             delta = slow
         self.ui.canvas.after(delta, self.timer_fired)
 
     def new_track(self):
-        if self.data.modified:
-            if messagebox.askokcancel(
-                    "Unsaved changes!", "Unsaved changes!\nContinue?"):
-                self.init()
+        if self.track.edits_not_saved:
+            if self.ui.open_popup('ok_or_cancel','Unsaved changes!', 'Unsaved changes!\nContinue?'):
+                self.start_session()
                 self.reset_rider()
         else:
-            self.init()
+            self.start_session()
             self.reset_rider()
+
+    def reload_on_exit_save(self):
+        path = "savedLines/ONEXITSAVE_"
+        if os.path.isfile(path):
+            with open(path, "rb") as track:
+                self.track = pickle.load(track, encoding='latin1')
+            self.track.grid.reset_grid()
+
+    def open_track(self):
+
+        if self.track.edits_not_saved:
+            if not self.ui.open_popup(
+                title='Unsaved track',
+                content='Your track will be lost. Do you want to continue?'
+            ):
+                return
+
+        def clickopen_callback(filename):
+            pass  # do import
+
+        _ = LoadPopup(
+            title='Load track',
+            track_list=[file.name for file in self.dir_tracks.iterdir()],
+            clickopen_callback=clickopen_callback
+        )
 
     def load_track(self):
         window = tk.Toplevel()
@@ -88,7 +113,7 @@ class App:
                     path = "savedLines/" + name
                     backupLines = self.track.lines
                     backupStart = self.track.startPoint
-                    self.init()
+                    self.start_session()
                     self.reset_rider()
                     with open(path, "rb") as track:
                         try:
@@ -111,7 +136,7 @@ class App:
             loadButton = tk.Button(window, text="Ok", command=do_load)
             loadButton.pack()
             cancelButton.pack()
-            if self.data.modified:
+            if self.track.edits_not_saved:
                 loadWindow.insert(0, "Unsaved changes!")
                 loadWindow.insert(tk.END, "Continue?")
             else:
@@ -122,84 +147,48 @@ class App:
             cancelButton = tk.Button(window, text="Okay ):", command=exit)
             loadWindow.pack()
 
-    def save_track(self):
-        window = tk.Toplevel()
-        window.title("Save Track")
-        saveWindow = tk.Entry(window)
-        saveWindow.insert(0, self.track.name)
-
-        def exit():
-            window.destroy()
-
-        def save_attempt():
-            name = saveWindow.get()
-            self.track.name = name
-            path = "savedLines/" + name
-
-            def save():
-                saveWindow.delete(0, tk.END)
-                try:
-                    with open(path, "wb") as track:
-                        pickle.dump(self.track, track)  # ACTUAL SAVING
-                    saveWindow.insert(0, "Saved!")
-                    self.track_modified(False)
-                    window.after(1000, exit)
-                except Exception as error:
-                    saveWindow.insert(0, "Failed to save! D:")
-                    print(error)
-                    window.after(1000, lambda: undo(False))
-
-            def undo(YN=True):
-                saveWindow.delete(0, tk.END)
-                saveWindow.insert(0, name)
-                loadButton.config(text="Save", command=save_attempt)
-                if YN:
-                    cancelButton.destroy()
-
-            if not os.path.isdir("savedLines"):
-                os.mkdir("savedLines")
-            if os.path.isfile(path):
-                saveWindow.delete(0, tk.END)
-                saveWindow.insert(0, "Overwrite track?")
-                loadButton.config(text="Yes", command=save)
-                cancelButton = tk.Button(window, text="No", command=undo)
-                cancelButton.pack()
-            else:
-                save()
-
-        loadButton = tk.Button(window, text="Save", command=save_attempt)
-        saveWindow.pack()
-        loadButton.pack()
-
-    def on_exit_save(self):
-        if not os.path.isdir("savedLines"):
-            os.mkdir("savedLines")
-        path = "savedLines/ONEXITSAVE_"
-        self.track.name = "ONEXITSAVE_"
+    def write_pickled_track_on_disk(self, filepath, export_payload):
         try:
-            with open(path, "wb") as track:
-                pickle.dump(self.track, track)
+            with open(filepath, 'wb') as pkl_handle:
+                pickle.dump(export_payload, pkl_handle)
+            self.track.track_modified(False)
+            self.track.save_statustag = "Saved!"
+            return True
         except Exception as error:
-            print('Error saving: ', error)
-            if not self.data.modified or tk.messagebox.askokcancel(
-                    "Unsaved changes!", "Failed to save! D:\nExit anyways?"):
-                self.ui.root.destroy()
-        self.ui.root.destroy()
+            print(f'Error while saving: {error}')
+            self.track.save_statustag = "Failed to save! D:"
+            return False
 
-    def reload_on_exit_save(self):
-        path = "savedLines/ONEXITSAVE_"
-        if os.path.isfile(path):
-            with open(path, "rb") as track:
-                self.track = pickle.load(track, encoding='latin1')
-            self.track.grid.reset_grid()
+    def save_track(self, popup=False):
+        export_payload = self.track.build_export_payload()
 
-    def track_modified(self, isMdfy=True):
-        self.data.modified = isMdfy
-        self.data.show_mdfy()
+        def clicksave_callback(popup, trackname, overwrite=False):
+            filepath = self.dir_tracks / trackname
+            if filepath.exists() and not overwrite:
+                popup.ask_if_overwrite()
+            else:
+                if self.write_pickled_track_on_disk(filepath, export_payload):
+                    self.track.name = trackname
+                    popup.success()
+                else:
+                    popup.fail()
+
+        if popup or self.track.orig_name:
+            _ = SavePopup(
+                title='Save this track',
+                ini_trackname=self.track.name,
+                clicksave_callback=clicksave_callback
+            )
+        else:  # CTRL+S or [X] and name already modified -> Just save, no popup
+            filepath = self.dir_tracks / self.track.name
+            if self.write_pickled_track_on_disk(filepath, export_payload):
+                return True
+            return False
+
 
     def add_to_history(self, action, undo, redo):
-        undoStack = self.data.undoStack
-        redoStack = self.data.redoStack
+        undoStack = self.undoStack
+        redoStack = self.redoStack
         if undo:  # call from undo, put in redo stack
             redoStack += [action]
         else:  # else, put in undo stack
@@ -208,32 +197,32 @@ class App:
                 undoStack.pop(0)
         if not redo and not undo:  # eg call from line tool
             redoStack = []  # clear redo stack
-        self.track_modified()
+        self.track.track_modified()
 
     def undo_cmd(self):
-        if len(self.data.undoStack) == 0:
+        if len(self.undoStack) == 0:
             pass
         else:
-            obj, command = self.data.undoStack.pop(-1)  # last action
+            obj, command = self.undoStack.pop(-1)  # last action
             command(obj, undo=True)
 
     def redo_cmd(self):
-        if len(self.data.redoStack) == 0:
+        if len(self.redoStack) == 0:
             pass
         else:
-            obj, command = self.data.redoStack.pop(-1)
+            obj, command = self.redoStack.pop(-1)
             command(obj, redo=True)
 
     def stop(self):
-        self.data.pause = True
+        self.is_paused = True
         self.data.slowmo = False
         self.reset_rider()
 
     def play_pause(self):  # technically toggles between play and pause
-        self.data.pause = not self.data.pause
-        if self.data.pause and self.data.follow:  # pausing
+        self.is_paused = not self.is_paused
+        if self.is_paused and self.data.follow:  # pausing
             self.track.panPos = self.rider.pos.r - self.data.center
-        elif not self.data.pause:
+        elif not self.is_paused:
             self.data.tempLine = None
 
     def update_positions(self):
@@ -288,7 +277,6 @@ class App:
         self.data.flag = True
         self.data.flagBosh = copy.deepcopy(self.rider)
         # very tricky part here
-
     #   canvas.data.flagBosh.accQueueNow = copy.copy(
     #                canvas.data.flagBosh.accQueuePast)
 
@@ -296,11 +284,10 @@ class App:
         self.data.flag = False
 
     def play_from_beginning(self):
-        self.data.pause = False
+        self.is_paused = False
         self.reset_rider(True)
 
     def reset_rider(self, fromBeginning=False):
-        self.data.tracer = []
         if fromBeginning or not self.data.flag:
             self.ui.make_rider()
         else:
@@ -324,7 +311,6 @@ class App:
         return (pnt - self.data.center) / self.track.zoom + self.data.cam
 
     def eval_speed(self):
-        totalVel = Vector(0, 0)
         point = self.rider.points[0]
         velocity = point.r - point.r0
         return velocity.magnitude()
@@ -352,7 +338,7 @@ class App:
             self.track.zoom = zoom
 
     def update_camera(self):
-        if self.data.pause or not self.data.follow:
+        if self.is_paused or not self.data.follow:
             self.data.cam = self.track.panPos + self.data.center
         else:
             self.data.cam = self.rider.pos.r
@@ -361,7 +347,6 @@ class App:
         cam = self.data.cam
         self.data.topLeft = cam - c / z
         self.data.bottomRight = cam + c / z
-
 
 
 if __name__ == "__main__":

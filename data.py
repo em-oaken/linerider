@@ -23,6 +23,7 @@ class Data:
     view_status = True
     view_collisions = False
     view_thin_lines = False
+    # TODO: View rider's trace
     slowmo = False
     follow = True
     mouseEnable = True
@@ -30,11 +31,4 @@ class Data:
     topLeft = Vector(0, 0)
     bottomRight = Vector(800, 600)
     windowSize = Vector(800, 600)
-    message = ""
-
-    def show_mdfy(self):
-        if self.modified:
-            self.message = "*"
-        else:
-            self.message = ""
 
