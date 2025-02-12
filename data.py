@@ -7,7 +7,7 @@ from geometry import Vector
 @dataclass
 class Data:
     delta: int = 10
-    timeDelta = 10  #100 hz/fps
+    timeDelta = 16  # Target interval between frames. 16ms -> 62.5fps
     grav = Vector(0, 30.0 / 1000 * delta)  #pixels per frame**2
     drag = 0.9999999 ** delta
     acc = 0.1 * delta  #acceleration line constant

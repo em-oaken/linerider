@@ -4,11 +4,8 @@ import copy
 import tkinter as tk
 from tkinter import messagebox
 import time
-import pickle
 
-from geometry import Point, Vector, Line, distance
-from shapes import LineShape, Arc, Polygon, Circle
-from physics import cnstr
+from geometry import Vector, Line, distance
 from tools import Tool, Ink
 
 class UI:
@@ -31,8 +28,6 @@ class UI:
             self.app.track.panPos -= delta
 
         self.canvas.bind("<Configure>", resize)
-        self.init_rider()
-        self.make_rider()
 
     def start_mainloop(self):
         self.root.mainloop()
@@ -263,112 +258,6 @@ class UI:
             self.root.bind("<Control-f>", lambda _: self.app.reset_flag())
         self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_exit())
 
-    def init_rider(self):
-        """loads the vector graphics of the rider into memory"""
-        s = 0.25  # scale down
-        sled = [
-            # base structure
-            LineShape([(0, 0), (94.4, 0)], width=6, lineColor="#aaa"),
-            LineShape([(-2, 38.2), (108.4, 38.2)], width=6, lineColor="#aaa"),
-            LineShape([(16.6, 3), (16.6, 35.2)], width=6, lineColor="#aaa"),
-            LineShape([(75, 3), (75, 35.2)], width=6, lineColor="#aaa"),
-            Arc([(108.4, 11.6)], theta=(26.7, -90, 260),
-                width=6, lineColor="#aaa", fillColor=None)
-
-            # outline
-        ]
-        body = [
-            # face
-            Polygon([(54, -17.4), (54, 19), (60.6, 28.4), (86, 18.6), (80.8, -17.4)],
-                    smooth=True),
-            Circle([(68, 12)], fillColor="black", radius=3.2),
-            # torso
-            Polygon([(0, -17.4), (56, -17.4), (56, 17.8), (0, 17.8)]),
-            # hat
-            Arc([(80.8, 0)], theta=(20.2, -90, 180)),
-            Circle([(106.8, 0)], fillColor="black", radius=5.8),
-            LineShape([(80.8, 21.2), (80.8, -21.2)], width=6),
-            Polygon([(56, -19.4), (56, -1.6), (80.8, -1.6), (80.8, -19.4)],
-                    fillColor="black"),
-            # scarf
-            LineShape([(49.2, -20), (49.2, -12)], lineColor="red", width=16, cap=tk.BUTT),
-            LineShape([(49.2, -12), (49.2, -4)], lineColor="white", width=16, cap=tk.BUTT),
-            LineShape([(49.2, -4), (49.2, 4)], lineColor="red", width=16, cap=tk.BUTT),
-            LineShape([(49.2, 4), (49.2, 12)], lineColor="white", width=16, cap=tk.BUTT),
-            LineShape([(49.2, 12), (49.2, 20)], lineColor="red", width=16, cap=tk.BUTT)
-        ]
-        arm1 = [
-            LineShape([(0, 0), (40, 0)], width=10.8),
-            Polygon([(40, -5.4), (44, -5.4), (46.4, -9.2), (48.4, -9.6), (49, -8.8),
-                     (48.4, -5.2), (52.4, -5.4), (55.2, -4.4), (56.6, -2.4), (56.6, 2.4),
-                     (55.2, 4.4), (52.4, 5.4), (40, 5.4)])
-        ]
-        leg1 = [
-            LineShape([(0, 0), (38.2, 0)], width=10.8),
-            Polygon([(38.2, -5.4), (47.2, -5.4), (53, -15.8), (57.4, -15.4),
-                     (57.4, 5.6), (38.2, 5.4)])
-        ]
-        arm2 = copy.deepcopy(arm1)
-        leg2 = copy.deepcopy(leg1)
-        parts = [arm1, leg1, sled, leg2, body, arm2]
-        self.app.rider.parts = parts  # vector graphics
-        self.init_flag()
-
-    def init_flag(self):
-        parts = copy.deepcopy(self.app.rider.parts)
-        for part in parts:
-            for shape in part:
-                if shape.lineColor == "red":
-                    shape.lineColor = "#eee"
-                elif shape.lineColor == "#aaa":
-                    shape.lineColor = "#eee"
-                elif shape.lineColor == "black":
-                    shape.lineColor = "#ddd"
-                if shape.fillColor == "black":
-                    shape.fillColor = "#ddd"
-        self.app.data.flagParts = parts
-
-    def make_rider(self):
-        sled = [Point(0, 0), Point(0, 10), Point(30, 10), Point(35, 0)]
-        bosh = [Point(10, 0), Point(10, -11), Point(23, -10), Point(23, -10),
-                Point(20, 10), Point(20, 10)]
-        scrf = [Point(7, -10), Point(3, -10), Point(0, -10), Point(-4, -10),
-                Point(-7, -10), Point(-11, -10)]
-        sledC = [cnstr(sled[0], sled[1]), cnstr(sled[1], sled[2]),
-                 cnstr(sled[2], sled[3]), cnstr(sled[3], sled[0]),
-                 cnstr(sled[0], sled[2]), cnstr(sled[1], sled[3])]
-        boshC = [cnstr(bosh[0], bosh[1]), cnstr(bosh[1], bosh[2]),
-                 cnstr(bosh[1], bosh[3]), cnstr(bosh[0], bosh[4]),
-                 cnstr(bosh[0], bosh[5])]
-        # sled+bosh = slsh :|
-        slshC = [cnstr(sled[0], bosh[0]), cnstr(sled[1], bosh[0]),
-                 cnstr(sled[2], bosh[0]), cnstr(sled[0], bosh[1]),
-                 cnstr(sled[3], bosh[2]), cnstr(sled[3], bosh[3]),
-                 cnstr(sled[2], bosh[4]), cnstr(sled[2], bosh[5])]
-        legsC = [cnstr(bosh[1], bosh[4], 0.5), cnstr(bosh[1], bosh[5], 0.5)]
-        scrfC = [cnstr(bosh[1], scrf[0]), cnstr(scrf[0], scrf[1]),
-                 cnstr(scrf[1], scrf[2]), cnstr(scrf[2], scrf[3]),
-                 cnstr(scrf[3], scrf[4]), cnstr(scrf[4], scrf[5])]
-        startPoint = self.app.track.startPoint
-        for point in sled + bosh + scrf:
-            point.r += startPoint
-            point.r0 += startPoint - Vector(1, 0)
-        self.app.rider.points = bosh + sled
-        self.app.rider.constraints = sledC + boshC + slshC
-        self.app.rider.scarf = scrf
-        self.app.rider.slshC = slshC
-        self.app.rider.scarfCnstr = scrfC
-        self.app.rider.legsC = legsC
-        self.app.rider.pos = bosh[0]
-        self.app.rider.accQueuePast = dict()
-        self.app.rider.accQueueNow = dict()
-        # parts = [arm1, leg1, sled, leg2, body, arm2]
-        self.app.rider.boshParts = ((bosh[1], bosh[2]), (bosh[0], bosh[4]),
-                                  (sled[0], sled[3]), (bosh[0], bosh[5]),
-                                  (bosh[0], bosh[1]), (bosh[1], bosh[3]))
-        self.app.rider.sledString = ((bosh[2], sled[3]), (bosh[3], sled[3]))
-        self.app.rider.onSled = True
-
     def redraw_all(self):
         self.canvas.delete(tk.ALL)
         if self.app.data.view_grid:
@@ -455,33 +344,29 @@ class UI:
         return closestPoint
 
     def draw_lines(self):
-        z = self.app.track.zoom
-        paused = self.app.is_paused
-        w = 3 * z
-        if self.app.data.view_thin_lines:
-            w = 1
-        for line in self.lines_in_screen():  # RENDERS ONLY VISIBLE LINES
+        width = 1 if self.app.data.view_thin_lines else 3 * self.app.track.zoom
+
+        for line in self.lines_in_screen():
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
             color = "black"
             arrow = None
-            if line.ink == Ink.Scene and paused:
+            if line.ink == Ink.Scene and self.app.is_paused:
                 color = "green"
-            if line.ink == Ink.Acc and paused:
+            if line.ink == Ink.Acc and self.app.is_paused:
                 color = "red"
                 arrow = tk.LAST
-            self.canvas.create_line(a.x, a.y, b.x, b.y, width=w,
+            self.canvas.create_line(a.x, a.y, b.x, b.y, width=width,
                                caps=tk.ROUND, fill=color, arrow=arrow)
+
         if self.app.rider.onSled:
             for line in self.app.rider.sledString:
                 a, b = self.app.adjust_pz(line[0].r), self.app.adjust_pz(line[1].r)
                 self.canvas.create_line(a.x, a.y, b.x, b.y)
-        if self.app.data.tempLine != None and paused:
-            line = self.app.data.tempLine
+
+        if self.app.tm.tempLine is not None and self.app.is_paused:
+            line = self.app.tm.tempLine
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
-            if distance(a, b) < self.app.tm.snap_radius:
-                color = "red"  # can't make this line
-            else:
-                color = "grey"
+            color = 'red' if distance(a, b) < self.app.tm.snap_radius else 'grey'
             self.canvas.create_line(a.x, a.y, b.x, b.y, fill=color)
 
     def draw_points(self):
@@ -500,8 +385,8 @@ class UI:
             self.canvas.create_oval((x - r, y - r), (x + r, y + r), outline="blue", width=3)
 
     def draw_flag(self):
-        parts = self.app.data.flagParts
-        bosh = self.app.data.flagBosh.boshParts
+        parts = self.app.flagged_rider.flag_drawing_vectors
+        bosh = self.app.flagged_rider.boshParts
         for i in range(len(parts)):
             part = parts[i]  # part contains tuples of line segments and stuff
             point0, point1 = bosh[i]  # each value has two Point objects
@@ -523,7 +408,7 @@ class UI:
 
     def draw_rider(self):
         self.draw_scarf("red")
-        parts = self.app.rider.parts
+        parts = self.app.rider.drawing_vectors
         bosh = self.app.rider.boshParts
         for i in range(len(parts)):
             part = parts[i]  # part contains tuples of line segments and stuff
@@ -818,12 +703,12 @@ class SavePopup:
         self.window.after(1000, lambda: self.window.destroy())
 
     def fail(self):
-        self.trackname_input.insert(0, 'Failed to save! D:')
+        self.trackname_input.insert(0, 'Failed to save!')
         self.window.after(1000, lambda: self.revert_to_ini_screen(False))
 
 
 """LoadPopup
-This is the window to....load a track!"""
+This is the window to....open a track!"""
 class LoadPopup:
     def __init__(self, title, track_list, clickopen_callback):
         self.clickopen_callback = clickopen_callback
@@ -836,7 +721,7 @@ class LoadPopup:
         self.open_btn = tk.Button(
             self.window,
             text="Open",
-            command=lambda: self.clickopen_callback(self.loadWindow.get(tk.ACTIVE))
+            command=lambda: self.clickopen_callback(self, self.loadWindow.get(tk.ACTIVE))
         )
         self.open_btn.pack()
         self.cancel_btn.pack()
@@ -844,3 +729,9 @@ class LoadPopup:
         # Load existing tracks
         for track in track_list:
             self.loadWindow.insert(0, track)
+
+    def fail(self, message):
+        messagebox.showerror(title='Error loading', message=message)
+
+    def success(self):
+        self.window.destroy()

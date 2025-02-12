@@ -23,6 +23,8 @@ class ToolManager:
         self.take('left', Tool.Pencil)
         self.take('right', Tool.Pan)
 
+        self.tempLine = None
+
     def get_tool_name(self, side:str):
         return self.name[self.get_side_id(side)].value
 
@@ -84,7 +86,7 @@ class Ruler:
             if event.type == "4":  # pressed
                 self.temp_point = pos
             elif event.type == "5" and self.temp_point is not None:  # released
-                self.tm.app.data.tempLine = None  # TODO: What does this do?
+                self.tm.tempLine = None  # TODO: What does this do?
                 min_len = self.tm.snap_radius / self.tm.app.track.zoom
                 if distance(self.temp_point, pos) > min_len:  # to avoid making lines of 0 length
                     self.tm.app.track.add_line(
@@ -92,7 +94,7 @@ class Ruler:
                     )
                 self.temp_point = None
             elif event.type == "6" and self.temp_point is not None:  # moved
-                self.tm.app.data.tempLine = Line(self.temp_point, pos)
+                self.tm.tempLine = Line(self.temp_point, pos)
 
 
 class Eraser:

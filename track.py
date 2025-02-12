@@ -45,9 +45,9 @@ class Track:
 
     def add_line(self, line, undo=False, redo=False):
         """Adds a single line to the track"""
-        if len(self.lines) == 0:
+        if len(self.lines) == 0:  # startPoint is to ensure rider always starts 30px above first line pixel!
             self.startPoint = line.r1 - Vector(0, 30)
-            self.app.ui.make_rider()
+            self.app.rider.rebuild(self.startPoint)
         self.lines += [line]
         self.grid.add_to_grid(line)
         inverse = (line, self.remove_line)
@@ -76,8 +76,17 @@ class Track:
         return lines_found
 
     # Loading and saving
-    def import_(self):
-        pass
+    def import_(self, dict):
+        # TODO: Implement restauring previous track upon fail saving
+        backupLines = self.lines
+        backupStart = self.startPoint
+
+        self.__init__(self.app)
+        for attr, val in dict.items():
+            exec(f'self.{attr} = val')
+
+        return True
+
 
     def build_export_payload(self):
         return {attr: eval(f'self.{attr}') for attr in self.imexport_attrs}

@@ -35,14 +35,11 @@ class Constraint:
     def check_endurance(self, data, kill_bosh):
         """if the ratio of the difference of length is beyond a certain
             limit, destroy line rider's attachment to the sled"""
-        endurance = data.endurance
         delta = self.pnt1.r - self.pnt2.r
-        deltaLength = delta.magnitude()
-        diff = (deltaLength - self.restLength)
+        diff = (delta.magnitude() - self.restLength)
         ratio = abs(diff / self.restLength)
-        if ratio > endurance:
-            # remove constraints
-            kill_bosh()
+        if ratio > data.endurance:
+            kill_bosh()  # remove constraints
 
     def resolve_scarf(self):
         """one sided constraints"""
@@ -180,14 +177,13 @@ def resolve_collision(pnt, data, grid, rider):
     a = data.acc
     maxiter = data.maxiter
     accLines = set()
-    while hasCollided == True and maxiter > 0:
+    while hasCollided and maxiter > 0:
         hasCollided = False
-        #get the lines the point may collide with
-        lines = grid.get_solid_lines(pnt)
+        lines = grid.get_solid_lines(pnt)  #get the lines the point may collide with
         #get the collision points of the lines the point actually collides with
         collidingLines, collisionPoints, intersections = get_colliding_lines(pnt, lines, data)
-        #no collisions? break
-        if collisionPoints == []:
+
+        if collisionPoints == []:  #no collisions? break
             break
         elif len(collisionPoints) > 1:
             #more than one collision points: get the intersection point closest to the point
@@ -201,6 +197,7 @@ def resolve_collision(pnt, data, grid, rider):
         pnt.r = futurePoint
         if collidingLine.ink == Ink.Acc:
             accLines.add(collidingLine)
+
         hasCollided = True
         maxiter -= 1
         if data.view_collisions:

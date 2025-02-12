@@ -3,9 +3,8 @@
 import math
 
 
-class Point(object):
+class Point:
     """points have position and velocity implied by previous position"""
-
     def __init__(self, *args):
         x, y = args[0], args[1]
         self.r = Vector(x, y)  # current position
@@ -14,12 +13,10 @@ class Point(object):
     def __repr__(self):
         return "Point" + str((self.r, self.r0))
 
-class Line(object):
+class Line:
     """lines are defined by two points, p1 and p2"""
-
-    #   __slots__ = ('r1', 'r2') #I ANTICIPATE THOUSANDS OF LINES
+    #   __slots__ = ('r1', 'r2') for optimization?
     def __init__(self, r1, r2):
-        #points are position vectors
         if isinstance(r1, Vector) and isinstance(r2, Vector):
             self.r1 = r1
             self.r2 = r2
@@ -49,9 +46,8 @@ class SolidLine(Line):
     def __repr__(self):
         return "solidLine" + str((self.r1, self.r2, self.ink))
 
-class Vector(object):
-    #slots for optimization...?
-    #   __slots__ = ('x', 'y')
+class Vector:
+    #   __slots__ = ('x', 'y')  #slots for optimization...?
     def __init__(self, x, y:float=0):
         if type(x) == tuple:
             x, y = x[0], x[1]
@@ -80,8 +76,6 @@ class Vector(object):
 
     #scalar multiplication/division
     def __mul__(self, other):
-        """exception: if other is also a vector, DOT PRODUCT
-            I do it all the time in my 3d calc hw anyways :|"""
         if isinstance(other, Vector):
             return dot(self, other)
         else:
@@ -105,7 +99,7 @@ class Vector(object):
         return distance2((self.x, self.y), (0, 0))
 
     def magnitude(self):
-        """magnitude of this vector)"""
+        """magnitude of this vector"""
         return distance((self.x, self.y), (0, 0))
 
     def normalize(self):
@@ -122,20 +116,19 @@ class Vector(object):
         return Vector(x, y)
 
     def get_angle(self):
-        """gets angle of vector relative to x axis"""
+        """gets angle of vector relative to x-axis"""
         return math.atan2(self.y, self.x)
 
-# x**0.5 is annoying to compute, in python and in real life, it's a bit faster
+
 def distance2(p, q):
-    """distance squared between these points"""
+    """Square of Euclidean distance squared between points"""
     if isinstance(p, Vector) and isinstance(q, Vector):
         return (p.x - q.x) ** 2 + (p.y - q.y) ** 2
     else:
         return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
 
-
 def distance(p, q):
-    """distance between these points"""
+    """Euclidean distance between points"""
     return distance2(p, q) ** 0.5
 
 def dot(u, v):

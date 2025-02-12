@@ -20,7 +20,7 @@ class App:
 
         self.data = Data()
         self.track = Track(app=self)
-        self.rider = Rider()
+        self.rider = Rider(self.track.startPoint)
         self.tm = ToolManager(self)
         self.start_session()
         self.ui = UI(app=self)
@@ -37,7 +37,6 @@ class App:
         self.redoStack = []
 
         # TODO: Need to understand those below!
-        self.data.tempLine = None
         self.data.cam = self.track.panPos
         self.data.flag = False
         self.data.collisionPoints = []
@@ -50,13 +49,11 @@ class App:
         self.ui.update_cursor()
         self.ui.redraw_all()
 
-        # an attempt to keep a constant 40 fps
+        # an attempt to keep a constant fps
         delay = int(1000 * (time.perf_counter() - start))
-        delta = self.data.timeDelta - delay
-        delta = max(1, delta)
-        slow = max(4, 200 - delay)
+        delta = max(1, self.data.timeDelta - delay)
         if self.data.slowmo and not self.is_paused:
-            delta = slow
+            delta = max(4, 200 - delay)
         self.ui.canvas.after(delta, self.timer_fired)
 
     def new_track(self):
@@ -84,68 +81,30 @@ class App:
             ):
                 return
 
-        def clickopen_callback(filename):
-            pass  # do import
+        def clickopen_callback(popup, filename):
+            track_to_load = self.dir_tracks / filename
+            print(f'Opening track {track_to_load}')
+
+            # Read the file, and THEN try to load it
+            with open(track_to_load, "rb") as pickled_track:
+                try:
+                    dict_track = pickle.load(pickled_track)
+                except Exception as error:
+                    popup.fail(f'Error while opening track: {error}')
+            self.track.import_(dict_track)
+            # TODO: Add something in case loading didn't work out (backup!)
+            popup.success()
+
+            self.start_session()
+            self.rider.rebuild(self.track.startPoint)
+            self.reset_rider()
+            self.track.grid.reset_grid()
 
         _ = LoadPopup(
-            title='Load track',
+            title='Open track',
             track_list=[file.name for file in self.dir_tracks.iterdir()],
             clickopen_callback=clickopen_callback
         )
-
-    def load_track(self):
-        window = tk.Toplevel()
-        window.title("Load Track")
-        loadWindow = tk.Listbox(window)
-        loadWindow.pack()
-
-        def exit():
-            window.destroy()
-
-        if os.path.isdir("savedLines"):
-            def do_load():
-                loadWindow.delete(0, tk.END)
-                for track in os.listdir("savedLines"):
-                    loadWindow.insert(0, track)
-
-                def load():
-                    name = loadWindow.get(tk.ACTIVE)
-                    path = "savedLines/" + name
-                    backupLines = self.track.lines
-                    backupStart = self.track.startPoint
-                    self.start_session()
-                    self.reset_rider()
-                    with open(path, "rb") as track:
-                        try:
-                            self.track = pickle.load(track, encoding='latin1')  # ACTUAL LOADING
-                        except Exception as error:  # in case it's not a valid file
-                            self.track.lines = backupLines
-                            self.track.startPoint = backupStart
-                            loadWindow.delete(0, tk.END)
-                            loadWindow.insert(0, "Y U NO LOAD")
-                            loadWindow.insert(tk.END, "VALID TRACK")
-                            print(error)
-                            window.after(1000, do_load)
-                    self.ui.make_rider()
-                    self.track.grid.reset_grid()
-
-                cancelButton.config(text="Close")
-                loadButton.config(text="Load", command=load)
-
-            cancelButton = tk.Button(window, text="Cancel", command=exit)
-            loadButton = tk.Button(window, text="Ok", command=do_load)
-            loadButton.pack()
-            cancelButton.pack()
-            if self.track.edits_not_saved:
-                loadWindow.insert(0, "Unsaved changes!")
-                loadWindow.insert(tk.END, "Continue?")
-            else:
-                do_load()
-        else:
-            loadWindow.insert(0, "savedLines folder")
-            loadWindow.insert(tk.END, "does not exist!")
-            cancelButton = tk.Button(window, text="Okay ):", command=exit)
-            loadWindow.pack()
 
     def write_pickled_track_on_disk(self, filepath, export_payload):
         try:
@@ -223,13 +182,12 @@ class App:
         if self.is_paused and self.data.follow:  # pausing
             self.track.panPos = self.rider.pos.r - self.data.center
         elif not self.is_paused:
-            self.data.tempLine = None
+            self.tm.tempLine = None
 
     def update_positions(self):
         if self.data.view_collisions:
             self.data.collisionPoints = []
-        for pnt in self.rider.points:
-            # first, update points based on inertia, gravity, and drag
+        for pnt in self.rider.points:  # first, update points based on inertia, gravity, and drag
             pastPos = pnt.r
             self.free_fall(pnt)
             pnt.r0 = pastPos
@@ -261,8 +219,8 @@ class App:
                 accLines = resolve_collision(pnt, self.data, self.track.grid, self.rider)
                 if len(accLines) > 0:  # contains lines
                     self.rider.accQueueNow[pnt] = accLines
-        scarfStrength = 1
-        # again, scarves are special
+
+        scarfStrength = 1  # again, scarves are special
         for i in range(scarfStrength):
             for cnstr in self.rider.scarfCnstr:
                 cnstr.resolve_scarf()
@@ -275,10 +233,10 @@ class App:
 
     def flag(self):
         self.data.flag = True
-        self.data.flagBosh = copy.deepcopy(self.rider)
-        # very tricky part here
-    #   canvas.data.flagBosh.accQueueNow = copy.copy(
-    #                canvas.data.flagBosh.accQueuePast)
+        self.flagged_rider = copy.deepcopy(self.rider)
+
+        # very tricky part here - Why deactivated?
+        # self.flagged_rider.accQueueNow = copy.copy(self.rider.accQueuePast)
 
     def reset_flag(self):
         self.data.flag = False
@@ -287,11 +245,12 @@ class App:
         self.is_paused = False
         self.reset_rider(True)
 
-    def reset_rider(self, fromBeginning=False):
-        if fromBeginning or not self.data.flag:
-            self.ui.make_rider()
+    def reset_rider(self, from_beginning=False):
+        """Places rider on starting point OR on flag point"""
+        if from_beginning or not self.data.flag:
+            self.rider.rebuild(self.track.startPoint)
         else:
-            self.rider = copy.deepcopy(self.data.flagBosh)
+            self.rider = copy.deepcopy(self.flagged_rider)
 
     def lmouse_pressed(self, event):
         self.tm.use('left', event)
