@@ -198,32 +198,28 @@ class App:
             pnt.r0 = pastPos
         # add in the acceleration lines from previous step
         accQueue = self.rider.accQueueNow
-        a = self.data.acc
         for pnt, lines in accQueue.items():
             for line in lines:
-                acc = (line.r2 - line.r1).normalize()
-                acc *= a
+                acc = (line.r2 - line.r1).normalize() * self.data.acc
                 pnt.r += acc
         self.rider.accQueuePast = copy.copy(self.rider.accQueueNow)
-        self.rider.accQueueNow = dict()  # empty queue after
-        for i in range(self.data.iterations):
+        self.rider.accQueueNow = dict()
+        for _ in range(10):
             # collisions get priority to prevent phasing through lines
             for cnstr in self.rider.legsC:
-                cnstr.resolve_legs()
+                cnstr.resolve(neg_factor_only=True)
             if self.rider.onSled:
                 for cnstr in self.rider.slshC:
                     cnstr.check_endurance(self.data, self.rider.kill_bosh)
             for cnstr in self.rider.constraints:
-                cnstr.resolve_constraint()
+                cnstr.resolve()
             for pnt in self.rider.points:
                 accLines = resolve_collision(pnt, self.data, self.track.grid, self.rider)
                 if len(accLines) > 0:  # contains lines
                     self.rider.accQueueNow[pnt] = accLines
 
-        scarfStrength = 1  # again, scarves are special
-        for i in range(scarfStrength):
-            for cnstr in self.rider.scarfCnstr:
-                cnstr.resolve_scarf()
+        for cnstr in self.rider.scarfCnstr:
+            cnstr.resolve(static_p1=True)
 
     def free_fall(self, pnt, mass: float = 1):
         """All points are independent, acting only on inertia, drag, and gravity
@@ -263,10 +259,11 @@ class App:
         self.ui.redraw_all()
 
     def adjust_pz(self, pnt):
+        """turns rider's world position to screen position"""
         return (pnt - self.data.cam) * self.track.zoom + self.data.center
 
     def inverse_pz(self, pnt):
-        """turns relative position to absolute"""
+        """turns screen position to rider's world position"""
         return (pnt - self.data.center) / self.track.zoom + self.data.cam
 
     def eval_speed(self):

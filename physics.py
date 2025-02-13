@@ -2,51 +2,45 @@
 
 import copy
 
-from geometry import Line, Vector, distance
+from geometry import Point, Line, Vector, distance
 from tool_helpers import Ink
 
 
 class Constraint:
-    def __init__(self, pnt1, pnt2, restLength):
-        #p1 and p2 are points
+    def __init__(self, pnt1: Point, pnt2: Point, rest_length):  #p1 and p2 are points
         self.pnt1, self.pnt2 = pnt1, pnt2
-        self.restLength = restLength
+        self.rest_length = rest_length
 
     def __repr__(self):
-        return str((self.pnt1, self.pnt2, self.restLength))
+        return str((self.pnt1, self.pnt2, self.rest_length))
 
-    def resolve_constraint(self):
-        """resolves a given constraint"""
+    def resolve(self, neg_factor_only=False, static_p1=False):
+        """Resolves the constraint by bringing p1 and p2 closer to each-other.
+        The higher the difference between length and rest-length, the bigger the correction to get them back together
+        neg_factor_only: For legs
+        static_p1: One-sided constraint for scarf"""
         delta = self.pnt1.r - self.pnt2.r
-        deltaLength = delta.magnitude()
-        diff = (deltaLength - self.restLength) / deltaLength
-        self.pnt1.r -= delta * diff / 2
-        self.pnt2.r += delta * diff / 2
+        length = distance(self.pnt1.r, self.pnt2.r)  # Was delta.magnitude() before, but why?
+        factor = (length - self.rest_length) / length
 
-    def resolve_legs(self):
-        """the constraint can only take on a minimum length"""
-        delta = self.pnt1.r - self.pnt2.r
-        deltaLength = delta.magnitude()
-        diff = (deltaLength - self.restLength) / deltaLength
-        if diff < 0:  # length is too small
-            self.pnt1.r -= delta * diff / 2
-            self.pnt2.r += delta * diff / 2
+        if neg_factor_only:
+            if factor < 0:
+                self.pnt1.r -= delta * factor / 2
+                self.pnt2.r += delta * factor / 2
+        elif static_p1:
+            self.pnt2.r += delta * factor
+        else:
+            self.pnt1.r -= delta * factor / 2
+            self.pnt2.r += delta * factor / 2
 
     def check_endurance(self, data, kill_bosh):
         """if the ratio of the difference of length is beyond a certain
             limit, destroy line rider's attachment to the sled"""
         delta = self.pnt1.r - self.pnt2.r
-        diff = (delta.magnitude() - self.restLength)
-        ratio = abs(diff / self.restLength)
+        diff = (delta.magnitude() - self.rest_length)
+        ratio = abs(diff / self.rest_length)
         if ratio > data.endurance:
             kill_bosh()  # remove constraints
-
-    def resolve_scarf(self):
-        """one sided constraints"""
-        delta = self.pnt1.r - self.pnt2.r
-        deltaLength = delta.magnitude()
-        diff = (deltaLength - self.restLength) / deltaLength
-        self.pnt2.r += delta * diff
 
 def cnstr(pnt1, pnt2, scale:float=1):
     length = (pnt1.r - pnt2.r).magnitude()

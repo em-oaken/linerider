@@ -238,6 +238,7 @@ class UI:
         self.root.bind("<KeyRelease>", key_released)
         self.root.bind("<Home>", lambda e: go_to_start())
         self.root.bind("<End>", lambda e: last_line())
+        self.root.bind('<Escape>', lambda _: self.root.destroy())
         if os.name == "mac":
             self.root.bind("<Command-z>", lambda _: undo())
             self.root.bind("<Command-Shift-Z>", lambda _: redo())
@@ -358,7 +359,7 @@ class UI:
             self.canvas.create_line(a.x, a.y, b.x, b.y, width=width,
                                caps=tk.ROUND, fill=color, arrow=arrow)
 
-        if self.app.rider.onSled:
+        if self.app.rider.onSled:  # Display sled string
             for line in self.app.rider.sledString:
                 a, b = self.app.adjust_pz(line[0].r), self.app.adjust_pz(line[1].r)
                 self.canvas.create_line(a.x, a.y, b.x, b.y)

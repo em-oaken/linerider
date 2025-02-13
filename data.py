@@ -14,7 +14,6 @@ class Data:
     epsilon = 0.00000000001  #larger than floating point errors
     lineThickness = 0.001
     endurance = 0.4
-    iterations = 10
     maxiter = 100
     view_lines = True
     view_vector = False
