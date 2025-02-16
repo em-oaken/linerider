@@ -25,7 +25,7 @@ class Grid:
             lines |= {line}
             grid[cell] = lines
 
-    def get_grid_cells(self, line):
+    def get_grid_cells(self, line: Line):
         """returns a list of the cells the line exists in"""
         firstCell = self.grid_pos(line.r1)
         lastCell = self.grid_pos(line.r2)
@@ -45,8 +45,8 @@ class Grid:
     def grid_in_screen(self):
         """returns a list of visible cells"""
         # absolute positions
-        topLeft = self.grid_pos(self.track.app.data.topLeft)
-        bottomRight = self.grid_pos(self.track.app.data.bottomRight)
+        topLeft = self.grid_pos(self.track.app.ui.canvas_topleft)
+        bottomRight = self.grid_pos(self.track.app.ui.canvas_bottomright)
         x1, x2 = topLeft[0], bottomRight[0]
         y1, y2 = topLeft[1], bottomRight[1]
         g = self.spacing
@@ -85,11 +85,12 @@ class Grid:
 
     def get_grid_ints(self, line, firstCell, lastCell):
         a, b, c = line.linear_equation()
-        dx = dy = self.spacing  # defined to be always positive
+        dx = dy = self.spacing  # is >0
         if lastCell[1] < firstCell[1]:  # y is decreasing
             dy *= -1
         gridInts = {}
         xInc, yInc = (dx, 0), (0, dy)
+
         # normally, I would just use x = (c-b*y)/a
         if b == 0:  # a might be 0 so SWAP VALUES
             b, a = a, b
@@ -97,12 +98,12 @@ class Grid:
             dy, dx = dx, dy
             firstCell = firstCell[1], firstCell[0]
             lastCell = lastCell[1], lastCell[0]
-        # vertical line intersections, exclude 0th line
-        for x in range(firstCell[0], lastCell[0], dx):
+
+        for x in range(firstCell[0], lastCell[0], dx):  # vertical line intersections, exclude 0th line
             x += dx
             gridInts[x] = xInc
-        # horizontal line intersections, exclude 0th line
-        for y in range(firstCell[1], lastCell[1], dy):
+
+        for y in range(firstCell[1], lastCell[1], dy):  # horizontal line intersections, exclude 0th line
             if dy > 0:
                 y += dy
             x = (c - b * y) / a
@@ -110,10 +111,10 @@ class Grid:
         return gridInts
 
     def get_solid_lines(self, pnt):
-        """returns a set of lines that exist in the same cells as the point"""
+        """returns a set of solid lines that exist in the same cells as the point"""
         vLine = Line(pnt.r0, pnt.r)
-        lines = set()
-        for gPos in self.get_grid_cells(vLine):  # list of cell positions
-            cell = self.solids.get(gPos, set())
-            lines |= cell  # add to set of lines to check collisions
-        return lines
+        return {
+            item
+            for cell in self.get_grid_cells(vLine)
+            for item in list(self.solids.get(cell, []))
+        }

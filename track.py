@@ -6,7 +6,6 @@ import datetime
 
 from grid import Grid
 from geometry import Vector
-from physics import distance_from_line
 
 
 class Track:
@@ -22,10 +21,6 @@ class Track:
         self.grid = Grid(track=self)
 
         self.imexport_attrs = ('lines', )  #, 'grid')
-
-        # These 2 should be part of UI
-        self.zoom = 1
-        self.panPos = Vector(0, 0) - app.data.center
 
     @property
     def name(self):
@@ -60,35 +55,16 @@ class Track:
         inverse = (line, self.add_line)
         self.app.add_to_history(inverse, undo, redo)
 
-    def get_lines_around(self, pos, radius):
-        """Returns a set of lines to be removed, part of the eraser"""
-        lines_found = set()
-        cells = self.grid.grid_neighbors(pos)  # list of 9 closest cell positions
-        for gPos in cells:  # each cell has a position/key on the grid/dict
-            cell = self.grid.solids.get(gPos, set())  # each cell is a set of lines
-            for line in cell:
-                if distance_from_line(pos, line, self.app.data) * self.zoom <= radius:
-                    lines_found.add(line)
-            cell = self.grid.scenery.get(gPos, set())
-            for line in cell:
-                if distance_from_line(pos, line, self.app.data) * self.zoom <= radius:
-                    lines_found.add(line)
-        return lines_found
-
     # Loading and saving
     def import_(self, dict):
         # TODO: Implement restauring previous track upon fail saving
-        backupLines = self.lines
-        backupStart = self.startPoint
+        # backupLines = self.lines
+        # backupStart = self.startPoint
 
         self.__init__(self.app)
         for attr, val in dict.items():
             exec(f'self.{attr} = val')
-
         return True
-
 
     def build_export_payload(self):
         return {attr: eval(f'self.{attr}') for attr in self.imexport_attrs}
-
-

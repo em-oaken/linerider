@@ -13,26 +13,41 @@ class UI:
         self.app = app
         self.root = tk.Tk()
         self.canvas = tk.Canvas(self.root, width=800, height=600, bg="white")
-        self.setup_window()
+        self.build_window()
         self.canvas.pack(fill="both", expand=True)
+
+        self.canvas_size = Vector(800, 600)
+        self.canvas_center = Vector(400, 300)
+        self.canvas_topleft = Vector(0, 0)
+        self.canvas_bottomright = Vector(800, 600)
 
         self.temp_message = ''
         self.help_popup = False
         self.help_index = 0
 
+        self.show_lines = True
+        self.show_vector = False
+        self.show_points = False
+        self.show_grid = False
+        self.show_status = True
+        self.show_collisions = False
+        # TODO: Show rider's trace
+
+        self.thin_lines = False
+
         def resize(event):
-            self.app.data.windowSize = Vector(event.width, event.height)
-            oldCenter = copy.copy(self.app.data.center)
-            self.app.data.center = Vector(event.width / 2, event.height / 2)
-            delta = self.app.data.center - oldCenter
-            self.app.track.panPos -= delta
+            self.canvas_size = Vector(event.width, event.height)
+            oldCenter = copy.copy(self.canvas_center)
+            self.canvas_center = Vector(event.width / 2, event.height / 2)
+            delta = self.canvas_center - oldCenter
+            self.app.player.panPos -= delta
 
         self.canvas.bind("<Configure>", resize)
 
     def start_mainloop(self):
         self.root.mainloop()
 
-    def setup_window(self):
+    def build_window(self):
         self.root.title("Line Rider")
 
         def reset_temp_message():
@@ -42,29 +57,66 @@ class UI:
             self.temp_message = m1 if boolean else m2
             self.canvas.after(1000, reset_temp_message)
 
+        # TOP BAR MENU
+        def snap():
+            self.app.tm.snap_ruler = not self.app.tm.snap_ruler
+            display_t(self.app.tm.snap_ruler, "Line snapping on", "Line snapping off")
+
+        def view_vector():
+            self.show_vector = not self.show_vector
+            display_t(self.show_vector, "Showing velocity", "Hiding velocity")
+
+        def view_points():
+            self.show_points = not self.show_points
+            display_t(self.show_points, "Showing snapping points", "Hiding snapping points")
+
+        def view_lines():
+            self.show_lines = not self.show_lines
+            display_t(self.show_lines, "Showing lines", "Hiding lines")
+
+        def view_grid():
+            self.show_grid = not self.show_grid
+            display_t(self.show_grid, "Showing grid", "hiding grid")
+
+        def view_status():
+            self.show_status = not self.show_status
+            display_t(self.show_status, "Showing status messages",
+                      "Status messages are hidden, how can you see this?")
+
+        def view_collisions():
+            self.show_collisions = not self.show_collisions
+            display_t(self.show_collisions, "Showing collision points", "Hiding collision points")
+
+        def go_to_start():
+            if self.app.player.is_paused:
+                self.app.player.panPos = self.app.track.startPoint - self.canvas_center
+
+        def last_line():
+            if self.app.player.is_paused and len(self.app.track.lines) > 0:
+                self.app.player.panPos = self.app.track.lines[-1].r2 - self.canvas_center
+
+        def follow_rider():
+            self.app.player.follow = not self.app.player.follow
+            display_t(self.app.player.follow, "Following rider", "Not following rider")
+
+        def view_thin_lines():
+            self.thin_lines = not self.thin_lines
+            display_t(self.thin_lines, "Viewing thin lines", "Viewing normal lines")
+
+        def view_help():
+            self.help_popup = not self.help_popup
+
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
-        # FILE
         fileMenu = tk.Menu(menubar, tearoff=False)
         fileMenu.add_command(label='New (ctrl+n)', command=self.app.new_track)
         fileMenu.add_command(label='Open (ctrl+o)', command=self.app.open_track)
         fileMenu.add_command(label='Save (ctrl+s)', command=self.app.save_track)
         menubar.add_cascade(label='File', menu=fileMenu)
 
-        # EDIT
-        def undo():
-            if self.app.is_paused: self.app.undo_cmd()
-
-        def redo():
-            if self.app.is_paused: self.app.redo_cmd()
-
-        def snap():
-            self.app.tm.snap_ruler = not self.app.tm.snap_ruler
-            display_t(self.app.tm.snap_ruler, "Line snapping on", "Line snapping off")
-
         edit_menu = tk.Menu(menubar, tearoff=False)
-        edit_menu.add_command(label="Undo (ctrl+z)", command=undo)
-        edit_menu.add_command(label="Redo (ctrl+shift+z)", command=redo)
+        edit_menu.add_command(label="Undo (ctrl+z)", command=self.app.undo_cmd)
+        edit_menu.add_command(label="Redo (ctrl+shift+z)", command=self.app.undo_cmd)
         edit_menu.add_command(label="Toggle Line Snapping (s)", command=snap)
         menubar.add_cascade(label="Edit", menu=edit_menu)
 
@@ -78,57 +130,11 @@ class UI:
         tool_menu.add_command(label="Scenery (3)", command=lambda: self.app.tm.set_ink(Ink.Scene))
         menubar.add_cascade(label="Tools", menu=tool_menu)
 
-        # view
-        def view_vector():
-            self.app.data.view_vector = not self.app.data.view_vector
-            display_t(self.app.data.view_vector, "Showing velocity", "Hiding velocity")
-
-        def view_points():
-            self.app.data.view_points = not self.app.data.view_points
-            display_t(self.app.data.view_points, "Showing snapping points",
-                      "Hiding snapping points")
-
-        def view_lines():
-            self.app.data.view_lines = not self.app.data.view_lines
-            display_t(self.app.data.view_lines, "Showing lines", "Hiding lines")
-
-        def view_grid():
-            self.app.data.view_grid = not self.app.data.view_grid
-            print('o')
-            display_t(self.app.data.view_grid, "Showing grid", "hiding grid")
-
-        def view_status():
-            self.app.data.view_status = not self.app.data.view_status
-            display_t(self.app.data.view_status, "Showing status messages",
-                      "Status messages are hidden, how can you see this?")
-
-        def view_collisions():
-            self.app.data.view_collisions = not self.app.data.view_collisions
-            display_t(self.app.data.view_collisions, "Showing collision points",
-                      "Hiding collision points")
-
-        def go_to_start():
-            if self.app.is_paused:
-                self.app.track.panPos = self.app.track.startPoint - self.app.data.center
-
-        def last_line():
-            if self.app.is_paused and len(self.app.track.lines) > 0:
-                lastLine = self.app.track.lines[-1].r2
-                self.app.track.panPos = lastLine - self.app.data.center
-
-        def follow_rider():
-            self.app.data.follow = not self.app.data.follow
-            display_t(self.app.data.follow, "Following rider", "Not following rider")
-
-        def view_thin_lines():
-            self.app.data.view_thin_lines = not self.app.data.view_thin_lines
-            display_t(self.app.data.view_thin_lines, "Viewing normal lines",
-                      "Viewing normal lines")
-
         viewMenu = tk.Menu(menubar)
         viewMenu.add_command(label="Velocity Vectors (v)", command=view_vector)
         viewMenu.add_command(label="Points (b)", command=view_points)
         viewMenu.add_command(label="Collisions (c)", command=view_collisions)
+        viewMenu.add_command(label="Lines", command=view_lines)
         viewMenu.add_command(label="Thin Lines", command=view_thin_lines)
         viewMenu.add_command(label="Grid", command=view_grid)
         viewMenu.add_command(label="Status", command=view_status)
@@ -138,59 +144,37 @@ class UI:
         viewMenu.add_command(label="Follow Rider", command=follow_rider)
         menubar.add_cascade(label="View", menu=viewMenu)
 
-        # playback
-        def slowmo():
-            if not self.app.is_paused:
-                self.app.data.slowmo = not self.app.data.slowmo
-
         playMenu = tk.Menu(menubar)
-        playMenu.add_command(label="Play/Pause (space/p)", command=self.app.play_pause)
-        playMenu.add_command(label="Stop (space)", command=self.app.stop)
-        playMenu.add_command(label="Step (t)", command=self.app.update_positions)
+        playMenu.add_command(label="Play/Pause (space/p)", command=self.app.player.play_pause)
+        playMenu.add_command(label="Stop (space)", command=self.app.player.stop)
+        playMenu.add_command(label="Step (t)", command=self.app.world.step_forward)
         playMenu.add_command(label="Reset Position (r)", command=self.app.reset_rider)
-        playMenu.add_command(label="Flag (f)", command=self.app.flag)
-        playMenu.add_command(label="Reset Flag (ctrl+f)", command=self.app.reset_flag)
-        playMenu.add_command(label="Play from Beginning (ctrl+p)",
-                             command=self.app.play_from_beginning)
-        playMenu.add_command(label="Slow-mo (m)", command=slowmo)
+        playMenu.add_command(label="Flag (f)", command=self.app.player.set_flag)
+        playMenu.add_command(label="Reset Flag (ctrl+f)", command=self.app.player.reset_flag)
+        playMenu.add_command(label="Play from Beginning (ctrl+p)", command=self.app.player.play_from_beginning)
+        playMenu.add_command(label="Slow-mo (m)", command=self.app.player.toggle_slowmo)
         menubar.add_cascade(label="Playback", menu=playMenu)
-
-        # help
-        def view_help():
-            self.help_popup = not self.help_popup
 
         helpMenu = tk.Menu(menubar)
         helpMenu.add_command(label="Help", command=view_help)
         helpMenu.add_command(label="About", command=self.do_about)
         menubar.add_cascade(label="Help", menu=helpMenu)
-        # bindings
-        self.root.bind("<Button-1>", self.app.lmouse_pressed)
-        self.root.bind("<B1-Motion>", self.app.lmouse_pressed)
-        self.root.bind("<ButtonRelease-1>", self.app.lmouse_pressed)
-        self.root.bind("<Button-3>", self.app.rmouse_pressed)
-        self.root.bind("<B3-Motion>", self.app.rmouse_pressed)
-        self.root.bind("<ButtonRelease-3>", self.app.rmouse_pressed)
-        self.root.bind("<Button-2>", self.app.mmouse_pressed)
-        self.root.bind("<B2-Motion>", self.app.mmouse_pressed)
-        self.root.bind("<MouseWheel>", self.app.zoom_m)
-        self.app.ctrlPressed = False
 
+        # Keyboard and mouse interactions
         def key_pressed(event):
             k = event.keysym
             c = event.char
-            if k == "Control_L" or k == "Control_R" or k == "Command_L" or k == "Command_R":
-                self.app.ctrlPressed = True
-            if self.app.ctrlPressed:
-                return None
-            elif c == "t":
-                if self.app.is_paused: self.app.update_positions()
+
+            if c == "t":
+                if self.app.player.is_paused:
+                    self.app.world.step_forward()
             elif c == "p":
-                self.app.play_pause()
+                self.app.player.play_pause()
             elif c == " ":
-                if self.app.is_paused:
-                    self.app.play_pause()
+                if self.app.player.is_paused:
+                    self.app.player.play_pause()
                 else:
-                    self.app.stop()
+                    self.app.player.stop()
             elif c == "q":
                 self.app.tm.take(Tool.Pencil)
             elif c == "w":
@@ -198,11 +182,11 @@ class UI:
             elif c == "e":
                 self.app.tm.take(Tool.Eraser)
             elif c == "m":
-                slowmo()
+                self.app.player.toggle_slowmo()
             elif c == "r":
                 self.app.reset_rider()
             elif c == "f":
-                self.app.flag()
+                self.app.player.set_flag()
             elif c == "v":
                 view_vector()
             elif c == "b":
@@ -229,61 +213,55 @@ class UI:
                     self.help_index += 1
             self.redraw_all()
 
-        def key_released(event):
-            k = event.keysym
-            if k == "Control_L" or k == "Control_R" or k == "Command_L" or k == "Command_R":
-                self.app.ctrlPressed = False
-
-        self.root.bind("<KeyPress>", key_pressed)
-        self.root.bind("<KeyRelease>", key_released)
-        self.root.bind("<Home>", lambda e: go_to_start())
-        self.root.bind("<End>", lambda e: last_line())
-        self.root.bind('<Escape>', lambda _: self.root.destroy())
-        if os.name == "mac":
-            self.root.bind("<Command-z>", lambda _: undo())
-            self.root.bind("<Command-Shift-Z>", lambda _: redo())
-            self.root.bind("<Command-s>", lambda _: self.app.save_track(popup=False))
-            self.root.bind("<Command-Shift-s>", lambda _: self.app.save_track(popup=True))
-            self.root.bind("<Command-p>", lambda _: self.app.play_from_beginning())
-            self.root.bind("<Command-o>", lambda _: self.app.open_track())
-            self.root.bind("<Command-n>", lambda _: self.app.new_track())
-            self.root.bind("<Command-f>", lambda _: self.app.reset_flag())
-        else:
-            self.root.bind("<Control-z>", lambda _: undo())
-            self.root.bind("<Control-Shift-Z>", lambda _: redo())
-            self.root.bind("<Control-s>", lambda _: self.app.save_track(popup=False))
-            self.root.bind("<Control-Shift-s>", lambda _: self.app.save_track(popup=True))
-            self.root.bind("<Control-p>", lambda _: self.app.play_from_beginning())
-            self.root.bind("<Control-o>", lambda _: self.app.open_track())
-            self.root.bind("<Control-n>", lambda _: self.app.new_track())
-            self.root.bind("<Control-f>", lambda _: self.app.reset_flag())
+        self.root.bind("<Button-1>", lambda e: self.app.tm.use('left', e))
+        self.root.bind("<B1-Motion>", lambda e: self.app.tm.use('left', e))
+        self.root.bind("<ButtonRelease-1>", lambda e: self.app.tm.use('left', e))
+        self.root.bind("<Button-3>", lambda e: self.app.tm.use('right', e))
+        self.root.bind("<B3-Motion>", lambda e: self.app.tm.use('right', e))
+        self.root.bind("<ButtonRelease-3>", lambda e: self.app.tm.use('right', e))
+        self.root.bind("<Button-2>", lambda e: self.app.tm.use('scroll-click', e))
+        self.root.bind("<B2-Motion>", lambda e: self.app.tm.use('scroll-click', e))
+        self.root.bind("<MouseWheel>", lambda e: self.app.tm.use('scroll', e))
+        self.root.bind('<KeyPress>', key_pressed)  # <KeyRelease> exists as well - just in case
+        self.root.bind('<Home>', lambda _: go_to_start())
+        self.root.bind('<End>', lambda _: last_line())
         self.root.protocol("WM_DELETE_WINDOW", lambda: self.on_exit())
+        self.root.bind('<Escape>', lambda _: self.root.destroy())
+
+        prefix = '<Command-' if os.name == 'mac' else '<Control-'
+        self.root.bind(prefix+'z>', lambda _: self.app.undo_cmd())
+        self.root.bind(prefix+'Shift-Z>', lambda _: self.app.redo_cmd())
+        self.root.bind(prefix+'s>', lambda _: self.app.save_track(popup=False))
+        self.root.bind(prefix+'Shift-s>', lambda _: self.app.save_track(popup=True))
+        self.root.bind(prefix+'p>', lambda _: self.app.play_from_beginning())
+        self.root.bind(prefix+'o>', lambda _: self.app.open_track())
+        self.root.bind(prefix+'n>', lambda _: self.app.new_track())
+        self.root.bind(prefix+'f>', lambda _: self.app.player.reset_flag())
 
     def redraw_all(self):
         self.canvas.delete(tk.ALL)
-        if self.app.data.view_grid:
+        if self.show_grid:
             self.draw_grid()
-        if self.app.data.view_lines:
+        if self.show_lines:
             self.draw_lines()
-        if self.app.data.view_points:
+        if self.show_points:
             self.draw_points()
-        if self.app.data.flag:
+        if self.app.player.flag:
             self.draw_flag()
         self.draw_rider()
-        if self.app.data.view_vector:
+        if self.show_vector:
             self.draw_vectors()
-        if self.app.data.view_collisions:
+        if self.show_collisions:
             self.draw_collisions()
-        if self.app.data.view_status:
+        if self.show_status:
             self.status_display()
         if self.help_popup:
             self.do_help()
 
     def show_grid(self):
-        topLeft, bottomRight = self.app.data.topLeft, self.app.data.bottomRight
         g = self.app.track.grid.spacing
-        topLeft = self.app.track.grid.grid_pos(topLeft)
-        bottomRight = self.app.track.grid.grid_pos(bottomRight + Vector(g, g))
+        topLeft = self.app.track.grid.grid_pos(self.canvas_topleft)
+        bottomRight = self.app.track.grid.grid_pos(self.canvas_bottomright + Vector(g, g))
         for x in range(topLeft[0], bottomRight[0], g):
             a, b = Vector(x, topLeft[1]), Vector(x, bottomRight[1])
             a, b = self.app.adjust_pz(a), self.app.adjust_pz(b)
@@ -332,7 +310,7 @@ class UI:
     def closest_point_to_line_point(self, pos):
         """finds the closest endpoint of a line segment to a given point"""
         closestPoint = pos
-        minDist = self.app.tm.snap_radius / self.app.track.zoom
+        minDist = self.app.tm.snap_radius / self.app.player.zoom
         for line in self.lines_in_screen():
             dist = distance(line.r1, pos)
             if dist < minDist:
@@ -345,15 +323,15 @@ class UI:
         return closestPoint
 
     def draw_lines(self):
-        width = 1 if self.app.data.view_thin_lines else 3 * self.app.track.zoom
+        width = 1 if self.thin_lines else 3 * self.app.player.zoom
 
         for line in self.lines_in_screen():
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
             color = "black"
             arrow = None
-            if line.ink == Ink.Scene and self.app.is_paused:
+            if line.ink == Ink.Scene and self.app.player.is_paused:
                 color = "green"
-            if line.ink == Ink.Acc and self.app.is_paused:
+            elif line.ink == Ink.Acc and self.app.player.is_paused:
                 color = "red"
                 arrow = tk.LAST
             self.canvas.create_line(a.x, a.y, b.x, b.y, width=width,
@@ -364,7 +342,7 @@ class UI:
                 a, b = self.app.adjust_pz(line[0].r), self.app.adjust_pz(line[1].r)
                 self.canvas.create_line(a.x, a.y, b.x, b.y)
 
-        if self.app.tm.tempLine is not None and self.app.is_paused:
+        if self.app.tm.tempLine is not None and self.app.player.is_paused:
             line = self.app.tm.tempLine
             a, b = self.app.adjust_pz(line.r1), self.app.adjust_pz(line.r2)
             color = 'red' if distance(a, b) < self.app.tm.snap_radius else 'grey'
@@ -386,8 +364,8 @@ class UI:
             self.canvas.create_oval((x - r, y - r), (x + r, y + r), outline="blue", width=3)
 
     def draw_flag(self):
-        parts = self.app.flagged_rider.flag_drawing_vectors
-        bosh = self.app.flagged_rider.boshParts
+        parts = self.app.player.flagged_rider.flag_drawing_vectors
+        bosh = self.app.player.flagged_rider.boshParts
         for i in range(len(parts)):
             part = parts[i]  # part contains tuples of line segments and stuff
             point0, point1 = bosh[i]  # each value has two Point objects
@@ -397,7 +375,7 @@ class UI:
 
     def draw_scarf(self, c):
         color = c
-        w = 4 * self.app.track.zoom
+        w = 4 * self.app.player.zoom
         for line in self.app.rider.scarfCnstr:
             if color == c:
                 color = "white"
@@ -440,7 +418,7 @@ class UI:
         for point in self.app.rider.points:
             pnt = self.app.adjust_pz(point.r)
             self.canvas.create_oval(pnt.x + 2, pnt.y + 2, pnt.x - 2, pnt.y - 2, fill="red")
-        for pnt in self.app.data.collisionPoints:
+        for pnt in self.app.world.collisionPoints:
             pnt = self.app.adjust_pz(pnt)
             self.canvas.create_oval(pnt.x + 2, pnt.y + 2, pnt.x - 2, pnt.y - 2, fill="yellow", width=0)
 
@@ -461,7 +439,7 @@ class UI:
         fps = 1/float(duration) if duration != 0 else 0
 
         line_count = len(self.app.track.lines)
-        speed = f'{self.app.eval_speed():.1f} pixels/frame' if not self.app.is_paused else ''
+        speed = f'{self.app.eval_speed():.1f} pixels/frame' if not self.app.player.is_paused else ''
 
         self.canvas.create_text(
             5, 0, anchor="nw",
@@ -476,7 +454,7 @@ class UI:
             'eraser': 'circle'
         }
         cur = tools_to_cur['default']
-        if self.app.is_paused:
+        if self.app.player.is_paused:
             cur = tools_to_cur[self.app.tm.get_tool_name('left')]
         self.canvas.config(cursor=cur)
 
@@ -486,24 +464,26 @@ class UI:
                 return
         self.root.destroy()
 
-
     def open_popup(self, type='ok_or_cancel', title='', content=''):
         if type == 'ok_or_cancel':
             return messagebox.askokcancel(title, content)
 
     def do_help(self):
-        center = self.app.data.center
-        TL = center - Vector(300, 200)
-        BR = center + Vector(300, 200)
+        TL = self.canvas_center - Vector(300, 200)
+        BR = self.canvas_center + Vector(300, 200)
         self.canvas.create_rectangle(TL.x, TL.y, BR.x, BR.y, width=5, fill="#eee")
 
         def title(text):
-            self.canvas.create_text(TL.x + 10, TL.y + 5, anchor=tk.NW, width=580,
-                               font=("Arial", "25", "bold"), text=text)
+            self.canvas.create_text(
+                TL.x + 10, TL.y + 5,anchor=tk.NW, width=580,
+                font=("Arial", "25", "bold"), text=text
+            )
 
         def contents(x, y, w, text):
-            self.canvas.create_text(TL.x + x, TL.y + y, anchor=tk.NW, width=w,
-                               font=("Arial", "15"), text=text)
+            self.canvas.create_text(
+                TL.x + x, TL.y + y, anchor=tk.NW, width=w,
+                font=("Arial", "15"), text=text
+            )
 
         def to_play():
             title("How to play Line Rider Python")
@@ -635,10 +615,11 @@ class UI:
                 self.canvas.create_line(a.x, a.y, b.x, b.y, width=1, cap=tk.ROUND)
 
         helpContents = [to_play, tools, line_types, playback, view, saving, tips1, tips2]
-        i = self.help_index
-        helpContents[i]()
-        self.canvas.create_text(BR.x - 10, TL.y + 5, anchor=tk.NE,
-                           font=("Arial", "15"), text=str(i + 1) + "/8")
+        helpContents[self.help_index]()
+        self.canvas.create_text(
+            BR.x - 10, TL.y + 5, anchor=tk.NE,
+            font=("Arial", "15"), text=str(self.help_index + 1) + "/8"
+        )
 
     def do_about(self):
         messagebox.showinfo("About", """Line Rider Python v1.4

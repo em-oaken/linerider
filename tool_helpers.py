@@ -5,6 +5,8 @@ class Tool(Enum):
     Ruler = 'ruler'
     Eraser = 'eraser'
     Pan = 'pan'
+    ZoomScroll = 'zoom-scroll'
+    ZoomDrag = 'zoom-drag'
 
 class Ink(Enum):
     Solid = 'solid'

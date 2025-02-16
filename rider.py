@@ -8,28 +8,31 @@ from shapes import LineShape, Arc, Polygon, Circle
 from physics import cnstr
 
 
-# Points
-sled = [Point(0, 0), Point(0, 10), Point(30, 10), Point(35, 0)]
-bosh = [Point(10, 0), Point(10, -11), Point(23, -10), Point(23, -10), Point(20, 10), Point(20, 10)]
-scrf = [Point(7, -10), Point(3, -10), Point(0, -10), Point(-4, -10), Point(-7, -10), Point(-11, -10)]
 
-# Constraints
-sledC = [cnstr(sled[0], sled[1]), cnstr(sled[1], sled[2]), cnstr(sled[2], sled[3]), cnstr(sled[3], sled[0]),
-         cnstr(sled[0], sled[2]), cnstr(sled[1], sled[3])]
-boshC = [cnstr(bosh[0], bosh[1]), cnstr(bosh[1], bosh[2]), cnstr(bosh[1], bosh[3]), cnstr(bosh[0], bosh[4]),
-         cnstr(bosh[0], bosh[5])]
-slshC = [cnstr(sled[0], bosh[0]), cnstr(sled[1], bosh[0]), cnstr(sled[2], bosh[0]), cnstr(sled[0], bosh[1]),
-         cnstr(sled[3], bosh[2]), cnstr(sled[3], bosh[3]), cnstr(sled[2], bosh[4]), cnstr(sled[2], bosh[5])]
-legsC = [cnstr(bosh[1], bosh[4], 0.5), cnstr(bosh[1], bosh[5], 0.5)]
-scrfC = [cnstr(bosh[1], scrf[0]), cnstr(scrf[0], scrf[1]), cnstr(scrf[1], scrf[2]), cnstr(scrf[2], scrf[3]),
-         cnstr(scrf[3], scrf[4]), cnstr(scrf[4], scrf[5])]
 
 
 class Rider:
     def __init__(self, start_point):  # make_rider() | startPoint = self.app.track.startPoint
         self.onSled = True
+        self.endurance = 0.4
         self.accQueuePast = dict()
         self.accQueueNow = dict()
+
+        # Points
+        sled = [Point(0, 0), Point(0, 10), Point(30, 10), Point(35, 0)]
+        bosh = [Point(10, 0), Point(10, -11), Point(23, -10), Point(23, -10), Point(20, 10), Point(20, 10)]
+        scrf = [Point(7, -10), Point(3, -10), Point(0, -10), Point(-4, -10), Point(-7, -10), Point(-11, -10)]
+
+        # Constraints
+        sledC = [cnstr(sled[0], sled[1]), cnstr(sled[1], sled[2]), cnstr(sled[2], sled[3]), cnstr(sled[3], sled[0]),
+                 cnstr(sled[0], sled[2]), cnstr(sled[1], sled[3])]
+        boshC = [cnstr(bosh[0], bosh[1]), cnstr(bosh[1], bosh[2]), cnstr(bosh[1], bosh[3]), cnstr(bosh[0], bosh[4]),
+                 cnstr(bosh[0], bosh[5])]
+        slshC = [cnstr(sled[0], bosh[0]), cnstr(sled[1], bosh[0]), cnstr(sled[2], bosh[0]), cnstr(sled[0], bosh[1]),
+                 cnstr(sled[3], bosh[2]), cnstr(sled[3], bosh[3]), cnstr(sled[2], bosh[4]), cnstr(sled[2], bosh[5])]
+        legsC = [cnstr(bosh[1], bosh[4], 0.5), cnstr(bosh[1], bosh[5], 0.5)]
+        scrfC = [cnstr(bosh[1], scrf[0]), cnstr(scrf[0], scrf[1]), cnstr(scrf[1], scrf[2]), cnstr(scrf[2], scrf[3]),
+                 cnstr(scrf[3], scrf[4]), cnstr(scrf[4], scrf[5])]
 
         self.boshParts = (
             (bosh[1], bosh[2]), (bosh[0], bosh[4]),
@@ -39,7 +42,7 @@ class Rider:
         self.sledString = ((bosh[2], sled[3]), (bosh[3], sled[3]))
         for point in sled + bosh + scrf:
             point.r += start_point
-            point.r0 += start_point - Vector(1, 0)
+            point.r0 += start_point - Vector(0, 0)  #
         self.points = bosh + sled
         self.scarf = scrf
 

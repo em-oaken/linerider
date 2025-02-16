@@ -28,7 +28,7 @@ class LineShape(Shape):
     def render(self, pnt0, angle, app):
         w = self.width
         if w != 1:
-            w *= app.track.zoom * 0.25
+            w *= app.player.zoom * 0.25
         cors = []
         for i in range(len(self.cors)):
             cor = self.cors[i].rotate(angle)
@@ -47,7 +47,7 @@ class Polygon(Shape):
     def render(self, pnt0, angle, app):
         w = self.width
         if w != 1:
-            w *= app.track.zoom * 0.25
+            w *= app.player.zoom * 0.25
         cors = []
         for i in range(len(self.cors)):
             cor = self.cors[i].rotate(angle)
@@ -72,10 +72,10 @@ class Arc(Shape):  #also pieslice
         x, y = center.x, center.y
         w = self.width
         if w != 1:
-            w *= app.track.zoom * 0.25
+            w *= app.player.zoom * 0.25
         angle = math.degrees(angle)
         strt = self.start - angle
-        r = self.radius * app.track.zoom
+        r = self.radius * app.player.zoom
         if self.fillColor == None:
             app.ui.canvas.create_arc(x + r, y + r, x - r, y - r, style=tk.ARC,
                               start=strt, extent=self.extent,
@@ -99,7 +99,7 @@ class Circle(Shape):
         x, y = center.x, center.y
         w = self.width
         if w != 1:
-            w *= app.track.zoom * 0.25
-        r = self.radius * app.track.zoom
+            w *= app.player.zoom * 0.25
+        r = self.radius * app.player.zoom
         app.ui.canvas.create_oval(x + r, y + r, x - r, y - r, width=w,
                            fill=self.fillColor, outline=self.lineColor)

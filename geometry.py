@@ -25,7 +25,7 @@ class Line:
             self.r2 = Vector(r2[0], r2[1])
 
     def __repr__(self):
-        return "Line" + str((self.r1, self.r2))
+        return 'Line' + str((self.r1, self.r2))
 
     def linear_equation(self):
         """in the form of ax+by=c"""
@@ -44,7 +44,7 @@ class SolidLine(Line):
         self.ink = ink
 
     def __repr__(self):
-        return "solidLine" + str((self.r1, self.r2, self.ink))
+        return 'SolidLine' + str((self.r1, self.r2, self.ink.name))
 
 class Vector:
     #   __slots__ = ('x', 'y')  #slots for optimization...?
@@ -55,7 +55,7 @@ class Vector:
         self.y = float(y)
 
     def __repr__(self):
-        return "vector" + str((self.x, self.y))
+        return 'Vector' + str((self.x, self.y))
 
     #vector addition/subtraction
     def __add__(self, other):
@@ -106,8 +106,7 @@ class Vector:
         """unit vector. same direction but with a magnitude of 1"""
         if (self.x, self.y) == (0, 0):
             return Vector(0, 0)
-        else:
-            return self / self.magnitude()
+        return self / self.magnitude()
 
     def rotate(self, other):
         """rotates vector in radians"""
@@ -120,17 +119,17 @@ class Vector:
         return math.atan2(self.y, self.x)
 
 
-def distance2(p, q):
+def distance2(p, q) -> float:
     """Square of Euclidean distance squared between points"""
     if isinstance(p, Vector) and isinstance(q, Vector):
         return (p.x - q.x) ** 2 + (p.y - q.y) ** 2
     else:
         return (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
 
-def distance(p, q):
+def distance(p, q) -> float:
     """Euclidean distance between points"""
     return distance2(p, q) ** 0.5
 
-def dot(u, v):
+def dot(u, v) -> float:
     """dot product of these vectors, a scalar"""
     return u.x * v.x + u.y * v.y
