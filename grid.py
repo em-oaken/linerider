@@ -25,6 +25,13 @@ class Grid:
             lines |= {line}
             grid[cell] = lines
 
+    def lines_in_screen(self):
+        lines = set()
+        for gPos in self.grid_in_screen():
+            lines.update(self.solids.get(gPos, {None}))
+            lines.update(self.scenery.get(gPos, {None}))
+        return {line for line in lines if line is not None}
+
     def get_grid_cells(self, line: Line):
         """returns a list of the cells the line exists in"""
         firstCell = self.grid_pos(line.r1)
@@ -43,15 +50,12 @@ class Grid:
         return cells
 
     def grid_in_screen(self):
-        """returns a list of visible cells"""
-        # absolute positions
+        """returns a list of visible cells.
+        A cell is defined by its top-right coordinates (and spacing)"""
         topLeft = self.grid_pos(self.track.app.ui.canvas_topleft)
         bottomRight = self.grid_pos(self.track.app.ui.canvas_bottomright)
-        x1, x2 = topLeft[0], bottomRight[0]
-        y1, y2 = topLeft[1], bottomRight[1]
-        g = self.spacing
-        cols = range(x1, x2 + g, g)
-        rows = range(y1, y2 + g, g)
+        cols = range(topLeft[0], bottomRight[0] + self.spacing, self.spacing)
+        rows = range(topLeft[1], bottomRight[1] + self.spacing, self.spacing)
         cells = [(x, y) for x in cols for y in rows]
         return cells
 

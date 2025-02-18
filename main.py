@@ -23,6 +23,7 @@ class App:
         self.rider = Rider(self.track.startPoint)
         self.tm = ToolManager(self)
         self.start_session()
+
         self.dir_tracks = Path('./savedLines/')
         self.dir_tracks.mkdir(exist_ok=True)
 
@@ -63,12 +64,10 @@ class App:
     #####
     def new_track(self):
         if self.track.edits_not_saved:
-            if self.ui.open_popup('ok_or_cancel','Unsaved changes!', 'Unsaved changes!\nContinue?'):
-                self.start_session()
-                self.reset_rider()
-        else:
-            self.start_session()
-            self.reset_rider()
+            if not self.ui.open_popup('ok_or_cancel','Unsaved changes!', 'Unsaved changes!\nContinue?'):
+                return
+        self.start_session()
+        self.reset_rider()
 
     def reload_on_exit_save(self):
         # TODO: Make it open the last track saved!
@@ -76,7 +75,7 @@ class App:
         if os.path.isfile(path):
             with open(path, "rb") as track:
                 self.track = pickle.load(track, encoding='latin1')
-            self.track.grid.reset_grid()
+            # self.track.grid.reset_grid() not needed because use of track.import_()
 
     def open_track(self):
         if self.track.edits_not_saved:
@@ -103,7 +102,6 @@ class App:
             self.start_session()
             self.rider.rebuild(self.track.startPoint)
             self.reset_rider()
-            self.track.grid.reset_grid()
 
         _ = LoadPopup(
             title='Open track',
@@ -170,18 +168,6 @@ class App:
         if len(self.redoStack) > 0:
             obj, command = self.redoStack.pop(-1)
             command(obj, redo=True)
-
-    def adjust_pz(self, pnt):
-        """turns rider's world position to screen position"""
-        return (pnt - self.player.cam) * self.player.zoom + self.ui.canvas_center
-
-    def inverse_pz(self, pnt):
-        """turns screen position to rider's world position"""
-        return (pnt - self.ui.canvas_center) / self.player.zoom + self.player.cam
-
-    def eval_speed(self):
-        velocity = self.rider.points[0].r - self.rider.points[0].r0
-        return velocity.magnitude()
 
 
 if __name__ == "__main__":

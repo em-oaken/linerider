@@ -69,3 +69,11 @@ class Player:
 
     def in_window(self, pos: Vector):
         return (0 <= pos.x <= self.app.ui.canvas_size.x) and (0 <= pos.y <= self.app.ui.canvas_size.y)
+
+    def adjust_pz(self, pnt):
+        """turns rider's world position to screen position"""
+        return (pnt - self.cam) * self.zoom + self.app.ui.canvas_center
+
+    def inverse_pz(self, pnt):
+        """turns screen position to rider's world position"""
+        return (pnt - self.app.ui.canvas_center) / self.zoom + self.cam

@@ -18,12 +18,6 @@ class World:
         self.lineThickness = 0.001
         self.maxiter = 100
 
-    def free_fall(self, pnt, mass: float = 1):
-        """All points are independent, acting only on inertia, drag, and gravity
-        The velocity is implied with the previous position"""
-        velocity = pnt.r - pnt.r0
-        return pnt.r + velocity * self.drag * mass + self.grav  # TODO: Drag should be with speed²!
-
     def step_forward(self):
         if self.app.ui.show_collisions:
             self.collisionPoints = []
@@ -55,6 +49,12 @@ class World:
 
         for cnstr in self.app.rider.scarfCnstr:
             cnstr.resolve(static_p1=True)
+
+    def free_fall(self, pnt, mass: float = 1):
+        """All points are independent, acting only on inertia, drag, and gravity
+        The velocity is implied with the previous position"""
+        velocity = pnt.r - pnt.r0
+        return pnt.r + velocity * self.drag * mass + self.grav  # TODO: Drag should be with speed²!
 
     def resolve_collision(self, pnt, grid, rider, ui):
         """takes a solid point, finds and resolves collisions,

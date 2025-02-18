@@ -65,7 +65,7 @@ class Pencil:
     def use(self, event):
         pos = Vector(event.x, event.y)
         if self.tm.app.player.is_paused and self.tm.app.player.in_window(pos):
-            pos = self.tm.app.inverse_pz(pos)
+            pos = self.tm.app.player.inverse_pz(pos)
             if event.type == "4":  # pressed
                 self.temp_point = pos
             elif event.type == "6" and self.temp_point is not None:  # moved
@@ -86,9 +86,9 @@ class Ruler:
     def use(self, event):
         pos = Vector(event.x, event.y)
         if self.tm.app.player.is_paused and self.tm.app.player.in_window(pos):
-            pos = self.tm.app.inverse_pz(pos)
+            pos = self.tm.app.player.inverse_pz(pos)
             if self.tm.snap_ruler:
-                pos = self.tm.app.ui.closest_point_to_line_point(pos)
+                pos = self.tm.app.track.get_closest_segment_end(pos)
             if event.type == "4":  # pressed
                 self.temp_point = pos
             elif event.type == "5" and self.temp_point is not None:  # released
@@ -111,7 +111,7 @@ class Eraser:
     def use(self, event):
         pos = Vector(event.x, event.y)
         if self.tm.app.player.is_paused and event.type != "5" and self.tm.app.player.in_window(pos):  # on press and move
-            pos = self.tm.app.inverse_pz(pos)
+            pos = self.tm.app.player.inverse_pz(pos)
             removed_lines = self.tm.app.track.get_lines_around(pos, self.radius)
             if len(removed_lines) > 0:
                 for line in removed_lines:

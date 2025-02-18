@@ -58,6 +58,11 @@ class Rider:
     def pos(self):
         return self.points[0]
 
+    @property
+    def speed(self):
+        velocity = self.points[0].r - self.points[0].r0
+        return velocity.magnitude()
+
     def gen_drawing_vectors(self):
         sled = [
             # base structure
