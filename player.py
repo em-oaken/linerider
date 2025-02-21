@@ -14,6 +14,9 @@ class Player:
         self.flag = False
         self.flagged_rider = None
 
+        self.snap_radius = 10
+        self.snap_ruler = True
+
         self.zoom = 1
         self.panPos = Vector(0, 0)
         self.cam = self.panPos

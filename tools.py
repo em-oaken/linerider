@@ -4,9 +4,6 @@ Class Ink
 Class ToolManager
 """
 
-
-
-
 from geometry import Vector, distance, SolidLine, Line
 from tool_helpers import Ink, Tool
 
@@ -15,11 +12,10 @@ class ToolManager:
     def __init__(self, app):
         self.app = app
         self.set_ink(Ink.Solid)
-        self.snap_radius = 10
-        self.snap_ruler = True
         self.sides = ['left', 'right', 'scroll', 'scroll-click']
         self.name = [None, None, None, None]
         self.tool = [None, None, None, None]  # handler for the actual tools
+
         self.take(Tool.Pencil, 'left')
         self.take(Tool.Pan, 'right')
         self.take(Tool.ZoomScroll, 'scroll')
@@ -69,7 +65,7 @@ class Pencil:
             if event.type == "4":  # pressed
                 self.temp_point = pos
             elif event.type == "6" and self.temp_point is not None:  # moved
-                min_len = self.tm.app.tm.snap_radius / self.tm.app.player.zoom
+                min_len = self.tm.app.player.snap_radius / self.tm.app.player.zoom
                 if distance(self.temp_point, pos) > min_len:  # to avoid making lines of 0 length
                     line = SolidLine(self.temp_point, pos, self.tm.ink)
                     self.tm.app.track.add_line(line)
@@ -87,13 +83,13 @@ class Ruler:
         pos = Vector(event.x, event.y)
         if self.tm.app.player.is_paused and self.tm.app.player.in_window(pos):
             pos = self.tm.app.player.inverse_pz(pos)
-            if self.tm.snap_ruler:
+            if self.tm.app.player.snap_ruler:
                 pos = self.tm.app.track.get_closest_segment_end(pos)
             if event.type == "4":  # pressed
                 self.temp_point = pos
             elif event.type == "5" and self.temp_point is not None:  # released
-                self.tm.tempLine = None  # TODO: What does this do?
-                min_len = self.tm.snap_radius / self.tm.app.player.zoom
+                self.tm.tempLine = None
+                min_len = self.tm.app.player.snap_radius / self.tm.app.player.zoom
                 if distance(self.temp_point, pos) > min_len:  # to avoid making lines of 0 length
                     self.tm.app.track.add_line(
                         SolidLine(self.temp_point, pos, self.tm.ink)
@@ -112,7 +108,7 @@ class Eraser:
         pos = Vector(event.x, event.y)
         if self.tm.app.player.is_paused and event.type != "5" and self.tm.app.player.in_window(pos):  # on press and move
             pos = self.tm.app.player.inverse_pz(pos)
-            removed_lines = self.tm.app.track.get_lines_around(pos, self.radius)
+            removed_lines = self.tm.app.world.get_lines_around(pos, self.radius)
             if len(removed_lines) > 0:
                 for line in removed_lines:
                     if line in self.tm.app.track.lines:

@@ -2,25 +2,104 @@
 import os
 import copy
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 import time
+from typing import Callable
+from dataclasses import dataclass
 
-from geometry import Vector, Line, distance
+from geometry import Vector, distance
 from tools import Tool, Ink
 from help_screen import HelpDisplayer
+
+
+@dataclass
+class Command:
+    label: str
+    callee: Callable
+    infotip: str = None
+    selector_group: dict = None
+    toggle: bool = False
+
+    def __post_init__(self):
+        self.infotip = self.infotip or self.label
+
+
+class ToggleButton(ttk.Button):
+    def __init__(self, master=None, text_on='On', text_off=None, on_click=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.texts = (text_off or text_on, text_on)
+        self.activated = False
+        self.config(text=self.texts[int(self.activated)], command=on_click)
+
+    def show_status(self, new_state):
+        self.activated = new_state
+        self.config(text=self.texts[int(self.activated)])
+        self.state([f'{'!' if not self.activated else ''}pressed'])
+
+
+class ToolTip:
+    def __init__(self, widget, text, delay=1000):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.tooltip = None
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+        self.after_id = None
+
+    def enter(self, event=None):
+        self.schedule()
+
+    def leave(self, event=None):
+        if self.after_id:
+            self.widget.after_cancel(self.after_id)
+            self.after_id = None
+        self.hide()
+
+    def schedule(self):
+        self.after_id = self.widget.after(self.delay, self.show)
+
+    def show(self):
+        if not self.tooltip:
+            x, y, _cx, _cy = self.widget.bbox('insert')  # Get the widget's position
+            x += self.widget.winfo_rootx() + 25  # Offset to the right
+            y += self.widget.winfo_rooty() + 25  # Offset downwards
+
+            # Create a toplevel window as a tooltip
+            self.tooltip = tk.Toplevel(self.widget)
+            self.tooltip.wm_overrideredirect(True)  # Remove window decorations
+            self.tooltip.wm_geometry(f'+{x}+{y}')
+
+            label = tk.Label(self.tooltip, text=self.text, background="#333333", foreground="#FFFFFF",
+                             relief="flat", font=("Arial", 8), padx=4, pady=2)
+            label.pack()
+
+    def hide(self):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+
 
 class UI:
     def __init__(self, app):
         self.app = app
-        self.root = tk.Tk()
-        self.canvas = tk.Canvas(self.root, width=800, height=600, bg="white")
-        self.build_window()
-        self.canvas.pack(fill="both", expand=True)
 
-        self.canvas_size = Vector(800, 600)
-        self.canvas_center = Vector(400, 300)
+        self.selected_tool = None
+        self.tool_selection_widgets = {}
+
+        self.selected_ink = None
+        self.ink_selection_widgets = {}
+
+        self.toggle_buttons = {}
+
+        canvas_frame = self.build_window()
+
+        self.canvas = tk.Canvas(canvas_frame, width=1200, height=600, bg="white")
+        self.canvas.pack(fill="both", expand=True)
+        self.canvas_size = Vector(1200, 600)
+        self.canvas_center = Vector(600, 300)
         self.canvas_topleft = Vector(0, 0)
-        self.canvas_bottomright = Vector(800, 600)
+        self.canvas_bottomright = Vector(1200, 600)
 
         self.temp_message = ''
         self.help_popup = False
@@ -33,9 +112,12 @@ class UI:
         self.show_grid = False
         self.show_status = True
         self.show_collisions = False
+        self.thin_lines = False
         # TODO: Show rider's trace
 
-        self.thin_lines = False
+        self.select_tool('Pencil')
+        self.select_ink('Solid')
+        self.toggle_snap(False)
 
         def resize(event):
             self.canvas_size = Vector(event.width, event.height)
@@ -50,6 +132,7 @@ class UI:
         self.root.mainloop()
 
     def build_window(self):
+        self.root = tk.Tk()
         self.root.title("Line Rider")
 
         def reset_temp_message():
@@ -61,8 +144,8 @@ class UI:
 
         # TOP BAR MENU
         def snap():
-            self.app.tm.snap_ruler = not self.app.tm.snap_ruler
-            display_t(self.app.tm.snap_ruler, "Line snapping on", "Line snapping off")
+            self.app.player.snap_ruler = not self.app.player.snap_ruler
+            display_t(self.app.player.snap_ruler, "Line snapping on", "Line snapping off")
 
         def view_vector():
             self.show_vector = not self.show_vector
@@ -108,59 +191,92 @@ class UI:
         def view_help():
             self.help_popup = not self.help_popup
 
-        menubar = tk.Menu(self.root)
-        self.root.config(menu=menubar)
-        fileMenu = tk.Menu(menubar, tearoff=False)
-        fileMenu.add_command(label='New (ctrl+n)', command=self.app.new_track)
-        fileMenu.add_command(label='Open (ctrl+o)', command=self.app.open_track)
-        fileMenu.add_command(label='Save (ctrl+s)', command=self.app.save_track)
-        menubar.add_cascade(label='File', menu=fileMenu)
+        commands = {
+            'Home': [
+                {'cols': 4, 'style': 'mini'},
+                Command('➕', self.app.new_track, 'New track (Ctrl+N)'),
+                Command('📂', self.app.open_track, 'Open track (Ctrl+O)'),
+                Command('💾', self.app.save_track, 'Save track (Ctrl+S)'),
+                Command('❓', view_help, 'Help'),
+                Command('⟲', self.app.undo_cmd, 'Undo (Ctrl+Z)'),
+                Command('⟳', self.app.redo_cmd, 'Redo (Ctrl+Shift+Z)'),
+                '',
+                Command('ℹ️', self.do_about, 'About'),
+            ],
+            'Tool': [
+                {'cols': 3, 'style': 'normal'},
+                Command('Solid', lambda: self.select_ink('Solid'), 'Solid (1)', self.ink_selection_widgets),
+                Command('Acceleration', lambda: self.select_ink('Acceleration'), 'Acceleration (2)', self.ink_selection_widgets),
+                Command('Scenery', lambda: self.select_ink('Scenery'), 'Scenery (3)', self.ink_selection_widgets),
+                '',
+                Command('Snap', self.toggle_snap, 'Snap ruler (S)', toggle=True),
+                '',
+                Command('Pencil', lambda: self.select_tool('Pencil'), 'Pencil (Q)', self.tool_selection_widgets),
+                Command('Ruler', lambda: self.select_tool('Ruler'), 'Ruler (W)', self.tool_selection_widgets),
+                Command('Eraser', lambda: self.select_tool('Eraser'), 'Eraser (E)', self.tool_selection_widgets),
+            ],
+            'Play': [
+                {'cols': 4, 'style': 'mini'},
+                Command('▶⏸', self.app.player.play_pause, 'Play/Pause (Space or P)'),
+                Command('\u23EE\u25B6', self.app.player.play_from_beginning, 'Play from Beginning (Ctrl+P)'),
+                # Command('⏹', self.app.player.stop, 'Stop (Space)'),
+                Command('👣', self.app.world.step_forward, 'Step (T)'),
+                Command('\u21BA', self.app.reset_rider, 'Reset Position (R)'),
+                Command('\u2691', self.app.player.set_flag, 'Flag position (F)'),
+                Command('\u2691\u274C', self.app.player.reset_flag, 'Reset Flag (Ctrl+F)'),
+                Command('\u23F5', self.app.player.toggle_slowmo, 'Slow-motion (M)'),
+                Command('👁', follow_rider, 'Follow rider'),
+            ],
+            'View': [
+                {'cols': 4, 'style': 'normal'},
+                Command('Grid', view_grid),
+                Command('Points', view_points, 'Points (B)'),
+                Command('Lines', view_lines),
+                Command('Thin lines', view_thin_lines),
+                Command('Velocity', view_vector, 'Velocity Vectors (V)'),
+                Command('Collisions', view_collisions, 'Collisions (C)'),
+                '',
+                Command('Status', view_status),
+                Command('To start', go_to_start),
+                '', '',
+                Command('To finish', last_line),
+            ]
+        }
 
-        edit_menu = tk.Menu(menubar, tearoff=False)
-        edit_menu.add_command(label="Undo (ctrl+z)", command=self.app.undo_cmd)
-        edit_menu.add_command(label="Redo (ctrl+shift+z)", command=self.app.undo_cmd)
-        edit_menu.add_command(label="Toggle Line Snapping (s)", command=snap)
-        menubar.add_cascade(label="Edit", menu=edit_menu)
 
-        tool_menu = tk.Menu(menubar)
-        tool_menu.add_command(label="Pencil (q)", command=lambda: self.app.tm.take(Tool.Pencil, 'left'))
-        tool_menu.add_command(label="Ruler (w)", command=lambda: self.app.tm.take(Tool.Ruler, 'left'))
-        tool_menu.add_command(label="Eraser (e)", command=lambda: self.app.tm.take(Tool.Eraser, 'left'))
-        tool_menu.add_separator()
-        tool_menu.add_command(label="Solid (1)", command=lambda: self.app.tm.set_ink(Ink.Solid))
-        tool_menu.add_command(label="Acceleration (2)", command=lambda: self.app.tm.set_ink(Ink.Acc))
-        tool_menu.add_command(label="Scenery (3)", command=lambda: self.app.tm.set_ink(Ink.Scene))
-        menubar.add_cascade(label="Tools", menu=tool_menu)
 
-        viewMenu = tk.Menu(menubar)
-        viewMenu.add_command(label="Velocity Vectors (v)", command=view_vector)
-        viewMenu.add_command(label="Points (b)", command=view_points)
-        viewMenu.add_command(label="Collisions (c)", command=view_collisions)
-        viewMenu.add_command(label="Lines", command=view_lines)
-        viewMenu.add_command(label="Thin Lines", command=view_thin_lines)
-        viewMenu.add_command(label="Grid", command=view_grid)
-        viewMenu.add_command(label="Status", command=view_status)
-        viewMenu.add_separator()
-        viewMenu.add_command(label="Starting Point (home)", command=go_to_start)
-        viewMenu.add_command(label="Last Line (end)", command=last_line)
-        viewMenu.add_command(label="Follow Rider", command=follow_rider)
-        menubar.add_cascade(label="View", menu=viewMenu)
+        style = ttk.Style()
+        style.configure("Normal.TButton", padding=3, width=12)#, font=("Helvetica", 8))
+        style.configure("Mini.TButton", padding=3, width=5, font=("Helvetica", 12))
 
-        playMenu = tk.Menu(menubar)
-        playMenu.add_command(label="Play/Pause (space/p)", command=self.app.player.play_pause)
-        playMenu.add_command(label="Stop (space)", command=self.app.player.stop)
-        playMenu.add_command(label="Step (t)", command=self.app.world.step_forward)
-        playMenu.add_command(label="Reset Position (r)", command=self.app.reset_rider)
-        playMenu.add_command(label="Flag (f)", command=self.app.player.set_flag)
-        playMenu.add_command(label="Reset Flag (ctrl+f)", command=self.app.player.reset_flag)
-        playMenu.add_command(label="Play from Beginning (ctrl+p)", command=self.app.player.play_from_beginning)
-        playMenu.add_command(label="Slow-mo (m)", command=self.app.player.toggle_slowmo)
-        menubar.add_cascade(label="Playback", menu=playMenu)
+        # Ribbon
+        ribbon = ttk.Frame(self.root, relief="flat", padding=0)
+        ribbon.pack(side="top", fill="x")
 
-        helpMenu = tk.Menu(menubar)
-        helpMenu.add_command(label="Help", command=view_help)
-        helpMenu.add_command(label="About", command=self.do_about)
-        menubar.add_cascade(label="Help", menu=helpMenu)
+        for area_num, (area, commands) in enumerate(commands.items()):
+            frame = ttk.LabelFrame(ribbon, text=area)
+            frame.grid(row=0, column=area_num, padx=5, pady=2, sticky='nsew')
+            num_cols = commands[0]['cols']
+            match commands[0]['style']:
+                case 'normal': btn_style = 'Normal.TButton'
+                case 'mini': btn_style = 'Mini.TButton'
+                case _: btn_style = 'Normal.TButton'
+
+            for i, cmd in enumerate(commands[1:]):
+                if cmd != '':
+                    if cmd.toggle:
+                        btn = ToggleButton(frame, text_on=f"{cmd.label}", style=btn_style, on_click=cmd.callee)
+                        self.toggle_buttons[cmd.label] = btn
+                    else:
+                        btn = ttk.Button(frame, text=f"{cmd.label}", style=btn_style, command=cmd.callee)
+                    ToolTip(btn, cmd.infotip, 300)
+                    btn.grid(row=i // num_cols, column=i % num_cols, padx=1, pady=1, sticky='nsew')
+                    if cmd.selector_group is not None:
+                        cmd.selector_group[cmd.label] = btn
+
+
+        canvas_frame = ttk.Frame(self.root, padding=1)
+        canvas_frame.pack(side="top", fill="both", expand=True)
 
         # Keyboard and mouse interactions
         def key_pressed(event):
@@ -178,11 +294,11 @@ class UI:
                 else:
                     self.app.player.stop()
             elif c == "q":
-                self.app.tm.take(Tool.Pencil)
+                self.select_tool('Pencil')
             elif c == "w":
-                self.app.tm.take(Tool.Ruler)
+                self.select_tool('Ruler')
             elif c == "e":
-                self.app.tm.take(Tool.Eraser)
+                self.select_tool('Eraser')
             elif c == "m":
                 self.app.player.toggle_slowmo()
             elif c == "r":
@@ -194,17 +310,18 @@ class UI:
             elif c == "b":
                 view_points()
             elif c == "1":
-                self.app.tm.set_ink(Ink.Solid)
+                self.select_ink('Solid')
             elif c == "2":
-                self.app.tm.set_ink(Ink.Acc)
+                self.select_ink('Acceleration')
             elif c == "3":
-                self.app.tm.set_ink(Ink.Scene)
+                self.select_ink('Scenery')
             elif c == "d":
                 self.app.dump()
             elif c == "h":
                 view_help()
             elif c == "s":
-                snap()
+                self.toggle_snap()
+
             elif c == "c":
                 view_collisions()
             if self.help_popup:
@@ -213,7 +330,7 @@ class UI:
                     self.help_index -= 1
                 if k == "Right" and i < 8:
                     self.help_index += 1
-            self.redraw_all()
+            # self.redraw_all()  # WHy do we need to refresh 2 times on key-press?
 
         self.root.bind("<Button-1>", lambda e: self.app.tm.use('left', e))
         self.root.bind("<B1-Motion>", lambda e: self.app.tm.use('left', e))
@@ -239,6 +356,39 @@ class UI:
         self.root.bind(prefix+'o>', lambda _: self.app.open_track())
         self.root.bind(prefix+'n>', lambda _: self.app.new_track())
         self.root.bind(prefix+'f>', lambda _: self.app.player.reset_flag())
+
+        return canvas_frame
+
+    def select_tool(self, tool_name):
+        self.selected_tool = tool_name
+        for btn in self.tool_selection_widgets.values():
+            btn.state(['!pressed'])
+        self.tool_selection_widgets[tool_name].state(['pressed'])
+        match self.selected_tool:
+            case 'Ruler':
+                self.app.tm.take(Tool.Ruler, 'left')
+            case 'Eraser':
+                self.app.tm.take(Tool.Eraser, 'left')
+            case _:
+                self.app.tm.take(Tool.Pencil, 'left')
+
+    def select_ink(self, ink_name):
+        self.selected_ink = ink_name
+        for btn in self.ink_selection_widgets.values():
+            btn.state(['!pressed'])
+        self.ink_selection_widgets[ink_name].state(['pressed'])
+        match self.selected_ink:
+            case 'Acceleration':
+                self.app.tm.set_ink(Ink.Acc)
+            case 'Scenery':
+                self.app.tm.set_ink(Ink.Scene)
+            case _:
+                self.app.tm.set_ink(Ink.Solid)
+
+    def toggle_snap(self, new_state=None):
+        self.app.player.snap_ruler = new_state or not self.app.player.snap_ruler
+        # display_t(self.app.player.snap_ruler, "Line snapping on", "Line snapping off")
+        self.toggle_buttons['Snap'].show_status(self.app.player.snap_ruler)
 
     def redraw_all(self):
         self.canvas.delete(tk.ALL)
@@ -309,11 +459,11 @@ class UI:
         if self.app.tm.tempLine is not None and self.app.player.is_paused:
             line = self.app.tm.tempLine
             a, b = self.app.player.adjust_pz(line.r1), self.app.player.adjust_pz(line.r2)
-            color = 'red' if distance(a, b) < self.app.tm.snap_radius else 'grey'
+            color = 'red' if distance(a, b) < self.app.player.snap_radius else 'grey'
             self.canvas.create_line(a.x, a.y, b.x, b.y, fill=color)
 
     def draw_points(self):
-        r = self.app.tm.snap_radius
+        r = self.app.player.snap_radius
         #    for point in canvas.data.points:
         #        pnt = adjust_pz(point.r)
         #        x, y = pnt.x, pnt.y
@@ -410,7 +560,7 @@ class UI:
     def update_cursor(self):
         tools_to_cur = {
             'default': 'arrow',
-            'pencil': 'pencil',
+            'pencil': 'target',  # Was `pencil` before, but that was confusing :)
             'ruler': 'crosshair',
             'eraser': 'circle'
         }

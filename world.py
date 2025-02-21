@@ -187,13 +187,13 @@ class World:
     def get_lines_around(self, pos, radius):
         """Returns a set of lines to be removed, part of the eraser"""
         lines_found = set()
-        cells = self.app.grid.grid_neighbors(pos)  # list of 9 closest cell positions
+        cells = self.app.track.grid.grid_neighbors(pos)  # list of 9 closest cell positions
         for gPos in cells:  # each cell has a position/key on the grid/dict
-            cell = self.app.grid.solids.get(gPos, set())  # each cell is a set of lines
+            cell = self.app.track.grid.solids.get(gPos, set())  # each cell is a set of lines
             for line in cell:
                 if self.distance_from_line(pos, line) * self.app.player.zoom <= radius:
                     lines_found.add(line)
-            cell = self.app.grid.scenery.get(gPos, set())
+            cell = self.app.track.grid.scenery.get(gPos, set())
             for line in cell:
                 if self.distance_from_line(pos, line) * self.app.player.zoom <= radius:
                     lines_found.add(line)

@@ -17,11 +17,11 @@ class App:
     def __init__(self):
         self.world = World(app=self)
         self.player = Player(app=self)
+        self.tm = ToolManager(self)
         self.ui = UI(app=self)
         self.player.set_panpos()
         self.track = Track(app=self)
         self.rider = Rider(self.track.startPoint)
-        self.tm = ToolManager(self)
         self.start_session()
 
         self.dir_tracks = Path('./savedLines/')

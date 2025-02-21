@@ -59,7 +59,7 @@ class Track:
     def get_closest_segment_end(self, pos):
         """finds the closest endpoint of a line segment to a given point"""
         closest_point = pos
-        smallest_dist = self.app.tm.snap_radius / self.app.player.zoom
+        smallest_dist = self.app.player.snap_radius / self.app.player.zoom
         for line in self.app.track.grid.lines_in_screen():
             dist = distance(line.r1, pos)
             if dist < smallest_dist:
