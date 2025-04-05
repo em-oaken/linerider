@@ -592,20 +592,15 @@ class UI:
         self.open_popup(
             type='showinfo',
             title='About',
-            content='''Line Rider Python v1.4
-Created by David Lu (Conundrumer)
-Something about fair use for education purposes here...
-Line Rider originally created by Bostjan Cadez (fsk)
-Collision detection adapted from:
-www.t3hprogrammer.com/research/line-circle-collision/tutorial
-Constraint algorithm adapted from:
-www.gpgstudy.com/gpgiki/GDC 2001%3A Advanced Character Physics
-Thanks to:
-Matthew (mhenr18)
-My brother
-Everyone else at www.weridethelines.com
-Line Rider Python will be discontinued after
-spring lines and trigger lines are implemented'''
+            content='''Line Rider - Made possible with Python <3
+            
+This software is based on the code written by massimo1220 (https://github.com/massimo1220/lineRider-python3), \
+who rewrote and improved the code originally written by David Lu (Conundrumer).
+This version aims at adding further functionalities to the game, made possible by first cleaning-up the code.
+
+Line Rider originally created by Boštjan Čadež "Fsk".
+
+This software has been edited and published by Em Oaken.'''
         )
 
 
