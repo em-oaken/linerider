@@ -1,38 +1,21 @@
-# Dependencies
-pip install pillow
+# Line Rider - Made possible with Python <3
 
-# LineRider for Python3
-Updated by: ***Massimo Burlando***
+## Get started
+1. Have Python 3 installed
+2. Clone the repository (packaging is to come soon)
+3. Have fun!
 
-**Disclaimer:** I don't take credit for this game. The original developer is David Lu (https://github.com/conundrumer), who wrote this code for a class. I just updated the code so that it works in Python3.
+## User interface
+![User interface](assets/01_screenshot_interface.png)
 
-## Game:
-Note the File Menu at the top of the game (for Mac Users, that is the top Menu Bar).
+## Contributing
+There is a LOT to be done! Feel free to join and have fun!
+Only 2 rules:
+- Bring some more fun
+- Write clean code
 
-New (Ctrl-n)  
-Load (Ctrl-l)  
-Save (Ctrl-s)  
-Undo (Ctrl-z)  
-Redo (Ctrl-shift-z)  
-Toggle Line Snapping (s)  
-Pencil (q)  
-Line (w)  
-Line Type  
-Eraser (e)  
-Velocity Vectors (v)  
-Points (b)  
-Collisions (c)  
-Thin Lines  
-Grid  
-Status  
-Starting Point (home)  
-Last Line (end)  
-Follow Rider  
-Play/Pause (space/p)  
-Stop (space)  
-Step (t)  
-Reset Position (r)  
-Flag (f)  
-Reset Flag (Ctrl-f)  
-Play from Beginning (Ctrl-p)  
-Slow-mo (m)  
+## Credits for code history
+This software is based on the code written by Massimo Burlando (alias massimo1220, https://github.com/massimo1220/lineRider-python3), \
+who ported the code to Python 3 and improved it. Originally written by David Lu (Conundrumer, https://github.com/conundrumer).
+
+This version aims at adding further functionalities to the game, made possible by first cleaning-up the code.
