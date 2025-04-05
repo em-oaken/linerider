@@ -60,7 +60,7 @@ class Track:
         """finds the closest endpoint of a line segment to a given point"""
         closest_point = pos
         smallest_dist = self.app.player.snap_radius / self.app.player.zoom
-        for line in self.app.track.grid.lines_in_screen():
+        for line in self.get_lines_between(self.app.ui.canvas_topleft, self.app.ui.canvas_bottomright):
             dist = distance(line.r1, pos)
             if dist < smallest_dist:
                 smallest_dist = dist
@@ -102,6 +102,28 @@ class Track:
                 ])
 
         return drawing_data
+
+    def get_lines_between(self, canvas_topleft, canvas_bottomright):
+        lines = set()
+        for gPos in self.grid.grid_in_screen(canvas_topleft, canvas_bottomright):
+            lines.update(self.grid.solids.get(gPos, {None}))
+            lines.update(self.grid.scenery.get(gPos, {None}))
+        return {line for line in lines if line is not None}
+
+    def get_lines_around(self, pos, radius):
+        """Returns a set of lines to be removed, part of the eraser"""
+        lines_found = set()
+        cells = self.grid.grid_neighbors(pos)  # list of 9 closest cell positions
+        for gPos in cells:  # each cell has a position/key on the grid/dict
+            cell = self.grid.solids.get(gPos, set())  # each cell is a set of lines
+            for line in cell:
+                if self.app.world.distance_from_line(pos, line) * self.app.player.zoom <= radius:
+                    lines_found.add(line)
+            cell = self.grid.scenery.get(gPos, set())
+            for line in cell:
+                if self.app.world.distance_from_line(pos, line) * self.app.player.zoom <= radius:
+                    lines_found.add(line)
+        return lines_found
 
     # Loading and saving
     def import_(self, dict):

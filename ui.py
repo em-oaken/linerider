@@ -390,11 +390,15 @@ class UI:
         # display_t(self.app.player.snap_ruler, "Line snapping on", "Line snapping off")
         self.toggle_buttons['Snap'].show_status(self.app.player.snap_ruler)
 
+
+    #####
+    # CANVAS
+    #####
     def redraw_all(self):
         self.canvas.delete(tk.ALL)
 
-        def draw_lines(line_list):
-            for (pt1, pt2) in line_list:
+        def draw_lines(line_sequence):
+            for (pt1, pt2) in line_sequence:
                 pt1, pt2 = self.app.player.adjust_pz(pt1), self.app.player.adjust_pz(pt2)
                 self.canvas.create_line(pt1.x, pt1.y, pt2.x, pt2.y)
 
@@ -439,7 +443,7 @@ class UI:
     def draw_lines(self):
         width = 1 if self.thin_lines else 3 * self.app.player.zoom
 
-        for line in self.app.track.grid.lines_in_screen():
+        for line in self.app.track.get_lines_between(self.canvas_topleft, self.canvas_bottomright):
             a, b = self.app.player.adjust_pz(line.r1), self.app.player.adjust_pz(line.r2)
             color = "black"
             arrow = None
@@ -557,6 +561,9 @@ class UI:
             text=f'{message}\n{tmp_msg}{fps:.0f} fps\n{line_count} lines in track\n{speed}'
         )
 
+    #####
+    # Misc
+    #####
     def update_cursor(self):
         tools_to_cur = {
             'default': 'arrow',

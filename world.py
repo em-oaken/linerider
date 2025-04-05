@@ -43,7 +43,7 @@ class World:
             for cnstr in self.app.rider.constraints:
                 cnstr.resolve()
             for pnt in self.app.rider.points:
-                accLines = self.resolve_collision(pnt, self.app.track.grid, self.app.rider, self.app.ui)
+                accLines = self.resolve_collision(pnt)
                 if len(accLines) > 0:  # contains lines
                     self.app.rider.accQueueNow[pnt] = accLines
 
@@ -56,7 +56,7 @@ class World:
         velocity = pnt.r - pnt.r0
         return pnt.r + velocity * self.drag * mass + self.grav  # TODO: Drag should be with speed²!
 
-    def resolve_collision(self, pnt, grid, rider, ui):
+    def resolve_collision(self, pnt):
         """takes a solid point, finds and resolves collisions,
         and returns the acceleration lines it collided with"""
         hasCollided = True
@@ -65,7 +65,7 @@ class World:
 
         while hasCollided and maxiter > 0:
             hasCollided = False
-            lines = grid.get_solid_lines(pnt)  # get the lines the point may collide with
+            lines = self.app.track.grid.get_solid_lines(pnt)  # get the lines the point may collide with
             collidingLines, collisionPoints, intersections = self.get_colliding_lines(pnt, lines)
 
             if len(collisionPoints) == 0:  # no more collisions
@@ -84,10 +84,10 @@ class World:
 
             hasCollided = True
             maxiter -= 1
-            if ui.show_collisions:
+            if self.app.ui.show_collisions:
                 self.collisionPoints += [copy.copy(futurePoint)]
-            if pnt == rider.points[0]:
-                rider.kill_bosh()  # LINE RIDER'S BUTT IS SENSITIVE. TOUCH IT AND HE FALLS OFF THE SLED.
+            if pnt == self.app.rider.points[0]:
+                self.app.rider.kill_bosh()  # LINE RIDER'S BUTT IS SENSITIVE. TOUCH IT AND HE FALLS OFF THE SLED.
         return accLines
 
     def get_colliding_lines(self, pnt, lines):
@@ -184,20 +184,6 @@ class World:
     def almost_equal(self, a, b):
         return abs(a - b) < self.epsilon / 100
 
-    def get_lines_around(self, pos, radius):
-        """Returns a set of lines to be removed, part of the eraser"""
-        lines_found = set()
-        cells = self.app.track.grid.grid_neighbors(pos)  # list of 9 closest cell positions
-        for gPos in cells:  # each cell has a position/key on the grid/dict
-            cell = self.app.track.grid.solids.get(gPos, set())  # each cell is a set of lines
-            for line in cell:
-                if self.distance_from_line(pos, line) * self.app.player.zoom <= radius:
-                    lines_found.add(line)
-            cell = self.app.track.grid.scenery.get(gPos, set())
-            for line in cell:
-                if self.distance_from_line(pos, line) * self.app.player.zoom <= radius:
-                    lines_found.add(line)
-        return lines_found
 
 def det(a, b, c, d):
     """determinant"""
