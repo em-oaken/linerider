@@ -134,6 +134,7 @@ class UI:
     def build_window(self):
         self.root = tk.Tk()
         self.root.title("Line Rider")
+        self.root.iconphoto(False, tk.PhotoImage(file='assets/app_icon.png'))
 
         def reset_temp_message():
             self.temp_message = ''
