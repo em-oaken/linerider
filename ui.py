@@ -594,8 +594,9 @@ class UI:
             title='About',
             content='''Line Rider - Made possible with Python <3
             
-This software is based on the code written by massimo1220 (https://github.com/massimo1220/lineRider-python3), \
-who rewrote and improved the code originally written by David Lu (Conundrumer).
+This software is based on the code written by Massimo Burlando (alias massimo1220, https://github.com/massimo1220/lineRider-python3), \
+who ported the code to Python 3 and improved it. Originally written by David Lu (Conundrumer).
+
 This version aims at adding further functionalities to the game, made possible by first cleaning-up the code.
 
 Line Rider originally created by Boštjan Čadež "Fsk".
